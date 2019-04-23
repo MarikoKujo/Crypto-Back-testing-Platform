@@ -12,7 +12,8 @@
 	<script src="{% static "testapp/setparam.js" %}"></script>
 </head>
 <body>
-    <form id="backtestparams" action="">
+    {% if error_message %}<p><strong style="color:red;">{{ error_message }}</strong></p>{% endif %}
+    <form id="backtestparams" action="{% url 'testapp:processing' %}" enctype="multipart/form-data" method="post">{% csrf_token %}
         <input type="text" id="from" name="from" style="width:100px;" class="text ui-widget-content ui-corner-all" placeholder="start date" required readonly>
     	<label for="to">to</label>
 		<input type="text" id="to" name="to" style="width:100px;" class="text ui-widget-content ui-corner-all" placeholder="end date" required readonly>

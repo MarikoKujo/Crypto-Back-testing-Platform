@@ -155,12 +155,15 @@ $( function() {
   $( "input[type=submit], input[type=file]" ).button();
 });
 
-// Dates should be non-empty. Starting cash should > 0.
+// Dates should be non-empty and different. Starting cash should > 0.
 $( function() {
   $( "#submitparams" ).on("click", function() {
     if ( $("#from").val() == "" || $("#to").val() == "") {
       event.preventDefault();
       alert("Please set both dates.");
+    } else if ( $("#from").val() == $("#to").val() ) {
+      event.preventDefault();
+      alert("Start date and end date should be different.");
     } else if (parseFloat( $("#capital").val() ) <= 0) {
       event.preventDefault();
       alert("Capital base should be greater than zero.");

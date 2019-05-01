@@ -4,14 +4,14 @@ from django.template import loader
 from django.urls import reverse
 
 from io import StringIO
-from .execute_backtest import execute_backtest
+from .execute_backtest import execute_backtest, compare
 
 import csv
 import pandas as pd
 
 
-
-assets_list = ['BTCUSDT','ETHBTC','XLMBTC','XRPBTC']
+df_class = 'dfstyle'  # css class to apply to dataframe in html
+assets_list = ['BTCUSDT','ETHBTC','XLMBTC','XRPBTC']  # available trading pairs
 
 # Create your views here.
 def index(request):
@@ -21,17 +21,17 @@ def index(request):
 
 def results(request):
 	context = {'assets': assets_list}
-	# maybe replace with another template here
-	return render(request, 'testapp/index.html', context)
+	context['perf'] = request.session['perf']
+	context['compare'] = request.session['compare']
+	context['start_date'] = request.session['start_date']
+	context['end_date'] = request.session['end_date']
+	context['init_capital'] = request.session['init_capital']
+	context['trading_pair'] = request.session['trading_pair']
+	context['filename_list'] = request.session['filename_list']
+	
+	return render(request, 'testapp/result.html', context)
 
 def processing(request):
-	# test if .csv file has correct format using try-except or if statement
-	# return render(request, 'testapp/index.html', {'assets': assets_list, 
-	#               'error_message': "Wrong csv format: timestamp and quantity in two columns."})
-	# else: 理论上应该在这里进行运算，得到结果redirect给/results
-	# 如何通过HttpResponseRedirect发送参数？
-	# use session variables!
-
 	if request.method != 'POST':  # this page should not be accessed without POST data
 		return HttpResponseRedirect(reverse('testapp:index'))
 
@@ -58,7 +58,11 @@ def processing(request):
 		#	deal with file larger than 2.5M here, maybe need to write to disk in chunks
 		#	try to readline and feed into StringIO using loop? avoid disk manipulation
 
-		filename_list.append(afile.name)
+		# chop '.csv' suffix from filename before displaying
+		if afile.name.endswith('.csv'):
+			filename_list.append(afile.name[:-len('.csv')])
+		else:
+			filename_list.append(afile.name)
 		print(afile.name)
 		trades_list.append(trades)
 
@@ -73,17 +77,35 @@ def processing(request):
 	
 	# get backtest results and performance analysis
 	perf_list = []
+	res_overview_list = []
 	for idx,trade in enumerate(trades_list):
 		perf = execute_backtest(start_date, end_date, init_capital, trading_pair, 
-								commission_method, commission_cost, trade)
-		print(perf.tail())
-		# try:  # run a backtest
-			# perf = execute_backtest(start_date, end_date, init_capital, trading_pair, 
-			# 					commission_method, commission_cost, trade)
-			# perf_list.append(perf)
-		# except:  # cannot finish a backtest
-		# 	error_message = 'Failed to run backtest for ' + filename_list[idx]
-		# 	context = {'assets': assets_list, 'error_message': error_message}
-		# 	return render(request, 'testapp/index.html', context)
+							commission_method, commission_cost, trade)
+		# render two dataframes to html strings to store in session json
+		print('backtest and analysis %d done' % idx)
+		perf[2] = perf[2].to_html(classes=df_class)
+		print('convert perf2 done')
+		perf[3] = perf[3].to_html(classes=df_class)
+		print('convert perf3 done')
+		perf_list.append(perf)  # (res_overview, graph_div, daily_details, export_data)
+		res_overview_list.append(perf[0])
+
+
+	# get comparison of overview results from all strategies
+	compare_results = compare(res_overview_list, filename_list)
+	# render dataframe to html string to store in session json
+	# compare_results = compare_results.set_table_attributes('class="dfstyle"')
+	# compare_results = compare_results.render()
+	compare_results = compare_results.to_html(classes=df_class)
+
+	# save all results to request.session
+	request.session['perf'] = perf_list
+	request.session['compare'] = compare_results
+	# save params to request.session
+	request.session['start_date'] = start_date
+	request.session['end_date'] = end_date
+	request.session['init_capital'] = init_capital
+	request.session['trading_pair'] = trading_pair
+	request.session['filename_list'] = filename_list
 	
 	return HttpResponseRedirect(reverse('testapp:results'))

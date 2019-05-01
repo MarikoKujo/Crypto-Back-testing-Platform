@@ -1,0 +1,21 @@
+/* includes alternating gray and white with on-hover color */
+
+.dfstyle {
+    font-size: 11pt; 
+    font-family: Arial;
+    border-collapse: collapse; 
+    border: 1px solid silver;
+}
+
+.dfstyle td, th {
+    padding: 5px;
+}
+
+.dfstyle tr:nth-child(even) {
+    background: #E0E0E0;
+}
+
+.dfstyle tr:hover {
+    background: silver;
+    cursor: pointer;
+}

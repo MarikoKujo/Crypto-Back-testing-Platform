@@ -1,10 +1,30 @@
-/*label, input { display:block; }*/
 input.text, select.text { margin-bottom:12px;/* width:95%;*/ padding: .4em; }
 fieldset { padding:0; border:0; margin-top:25px; }
 h1 { font-size: 1.2em; margin: .6em 0; }
-hr { height:1px; border:none; color:#000; background-color:#000; }
+hr { height:1px; border:none; color:silver; background-color:silver; }
 div#users-contain { width: 350px; margin: 20px 0; }
 div#users-contain table { margin: 1em 0; border-collapse: collapse; width: 100%; }
 div#users-contain table td, div#users-contain table th { border: 1px solid #eee; padding: .6em 10px; text-align: left; }
 .ui-dialog .ui-state-error { padding: .3em; }
 .validateTips { border: 1px solid transparent; padding: 0.3em; }
+
+#tabs {border: none; padding:0px; margin:0px;}
+#tabs .ui-widget { border:none; padding:0px; margin:0px; }
+#tabs .ui-widget-header { border:none; padding:0px; margin:0px; background-color: transparent;}
+#tabs .ui-widget-content { border:none; padding:5px 0; margin:3px; }
+#tabs .ui-tabs-nav li {border-width: 0;}
+
+.ui-tabs-vertical { width: 100%;}
+.ui-tabs-vertical .ui-widget-header { background-color: #e5f5fd !important; }
+.ui-tabs-vertical .ui-tabs-nav { padding: .2em .2em .2em .2em; float: left; width: 10em; background-color:transparent;}
+.ui-tabs-vertical .ui-tabs-nav li { clear: left; width: 100%; border-width: 0 !important; border-right-width: 0 !important; margin: .2em .2em .2em 0; font-size: .9em; background-color:transparent;}
+.ui-tabs-vertical .ui-tabs-nav li a { color: #007fff; display:block; width: 81%;}
+.ui-tabs-vertical .ui-tabs-nav li.ui-tabs-active { padding-bottom: 0; padding-right: .1em; border-right-width: 1px; background-color:transparent;}
+.ui-tabs-vertical .ui-tabs-nav li.ui-tabs-active a { color: #000; font-weight: bold;}
+.ui-tabs-vertical .ui-tabs-panel { padding: 1em; float: right; width: 71em;}
+
+#stat-ovw { list-style-type: none; margin: 0 30px; padding: 0; overflow: hidden; }
+#stat-ovw li { float: left; margin-right: 30px; font-size: .9em; }
+#stats { font-size: 1.8em;}
+
+.plotly-graph-div { width: 83% !important; }

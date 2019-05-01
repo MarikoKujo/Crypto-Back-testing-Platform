@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Back-testing Environment</title>
+	<link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+	<link rel="stylesheet" href="{% static "testapp/style.css" %}">
+    <link rel="stylesheet" href="{% static "testapp/dfstyle.css" %}">
+	<script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+	<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="{% static "testapp/result.js" %}"></script>
+</head>
+<body>
+	<input type="text" id="from" style="width:100px;" class="text ui-widget-content ui-corner-all" placeholder="{{ start_date }}" readonly>
+	<label for="to">to</label>
+	<input type="text" id="to" style="width:100px;" class="text ui-widget-content ui-corner-all" placeholder="{{ end_date }}" readonly>
+	<label for="capital">&nbsp; capital base</label>
+	<input type="text" id="capital" style="width:100px;" class="text ui-widget-content ui-corner-all" placeholder="{{ init_capital }}" readonly>
+	<label for="tradingpair">&nbsp; trading pair</label>
+	<select id="tradingpair" class="text ui-widget-content ui-corner-all" disabled>
+	    <option value="{{ trading_pair }}"> {{ trading_pair }} </option>
+	</select>
+	<button type="button" id="submitparams" disabled=true>Run Backtest</button>
+	<button type="button" id="settings" disabled=true>Settings</button>
+	<button type="button" id="startnew">Start New Backtests</button>
+	
+	<div id="dialog-confirm" title="Start new backtests" data-url="{% url 'testapp:index' %}">
+		<p>Are you sure to leave the current results page and start new backtests?</p>
+	</div>
+
+	<hr>
+
+	<div id="tabs">
+		<ul>
+		{% for name in filename_list %}
+			<li><a href="{% cycle '#filetabs-1' '#filetabs-2' '#filetabs-3' %}">{{ name }}</a></li>
+		{% endfor %}
+		</ul>
+		{% for p in perf %}
+		<div id="{% cycle 'filetabs-1' 'filetabs-2' 'filetabs-3' %}">
+			<div id="{% cycle 'vrtTabs-1' 'vrtTabs-2' 'vrtTabs-3' %}" class="vrtTabs">
+				<ul>
+					<li><a href="#perftabs-ovw">Results Overview</a></li>
+					<li><a href="#perftabs-daily">Daily Details</a></li>
+					<li><a href="#perftabs-comp">Comparison</a></li>
+					<li><a href="#perftabs-exp">Export to File</a></li>
+				</ul>
+				<div id="perftabs-ovw">
+					<ul id="stat-ovw">
+						<li>Total Returns:<br><span id="stats">{{p.0.total_returns}}</span></li>
+						<li>Mean Daily Returns:<br><span id="stats">{{p.0.mean_daily_returns}}</span></li>
+						<li>Gross Returns:<br><span id="stats">{{p.0.gross_returns}}</span></li>
+						<li>Number of Trades:<br><span id="stats">{{p.0.number_of_trades}}</span></li>
+						<li>Volatility:<br><span id="stats">{{p.0.volatility}}</span></li>
+						<li>Sharpe Ratio:<br><span id="stats">{{p.0.sharpe_ratio}}</span></li>
+					</ul>
+					<br>{{p.1|safe}}
+				</div>
+				<div id="perftabs-daily">{{p.2|safe}}</div>
+				<div id="perftabs-comp">{{compare|safe}}</div>
+				<div id="perftabs-exp">
+					<form id="expfile" action="" method="post">{% csrf_token %}
+						<input type="text" id="filename" name="filename" class="text ui-widget-content ui-corner-all" value="test.csv">
+						<button type="button" id="savefile">Export</button>
+					</form><br>
+					{{p.3|safe}}
+				</div>
+			</div>
+		</div>
+		{% endfor %}
+	</div>
+</body>

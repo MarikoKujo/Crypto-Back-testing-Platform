@@ -8,13 +8,16 @@ import time
 import pandas as pd
 import plotly.plotly as pltly
 import plotly.graph_objs as go
-from plotly.offline import download_plotlyjs, plot
+# from plotly.offline import download_plotlyjs, plot
+import plotly.offline
 
 
 timezone = 'UTC'
+bundle_name = 'csvdir'
 
 def execute_backtest(start_dt, end_dt, init_cap,
 					trading_pair, commission_method, commission_c, trades):
+	"""Execute a backtest and provide various performance analysis."""
 
 	start_date = pd.to_datetime(start_dt).tz_localize(timezone)
 	end_date = pd.to_datetime(end_dt).tz_localize(timezone)
@@ -31,6 +34,7 @@ def execute_backtest(start_dt, end_dt, init_cap,
 
 
 	def initialize(context):
+		"""Set initialization params for a backtest"""
 		# trading pair
 		context.asset = symbol(trading_pair)
 		# trading signals, dict, timestamp:amount
@@ -42,7 +46,9 @@ def execute_backtest(start_dt, end_dt, init_cap,
 		else:
 			context.set_commission(commission.PerTrade(cost=commission_cost))
 
-	def handle_data(context, data):  # will be executed every minute
+	def handle_data(context, data):
+		"""This function will be executed every minute to check
+		if an order should be placed now, and place the order if so."""
 		# quant = 0 if timestamp of now is not in context.trades
 		quant = context.trades.get(get_datetime(), 0)
 		if quant != 0:
@@ -51,8 +57,15 @@ def execute_backtest(start_dt, end_dt, init_cap,
 
 
 
-	# results overview section: overall statistics
 	def get_results_overview(perf):
+		"""Results overview section - summary statistics.
+
+		Parameters:
+		perf : pd.DataFrame, the overall results of a backtest
+
+		Returns:
+		results : dict
+		"""
 		if commission_is_per_share:
 			transaction_cost = sum([abs(t['amount'])*commission_cost for tlist in perf['transactions'] for t in tlist])
 			gross_ret = (perf['portfolio_value'][-1]+transaction_cost-init_capital)/init_capital
@@ -62,17 +75,26 @@ def execute_backtest(start_dt, end_dt, init_cap,
 			gross_ret = (perf['portfolio_value'][-1]+transaction_cost-init_capital)/init_capital
 
 		results = {}
-		results['Total returns'] = "{:.2f}".format(perf['algorithm_period_return'][-1])*100)+"%"
-		results['Volatility'] = "{:.2f}".format(perf['algo_volatility'][-1])
-		results['Sharpe ratio'] = "{:.2f}".format(perf['sharpe'][-1])
-		results['Number of trades'] = "{:d}".format(len(trades))
-		results['Mean daily returns'] = "{:.2f}".format((perf['returns'].mean(skipna=True))*100))+"%"
-		results['Gross returns'] = "{:.2f}".format(gross_ret*100)+"%"
+		results['total_returns'] = "{:.2f}".format((perf['algorithm_period_return'][-1])*100)+"%"
+		results['volatility'] = "{:.2f}".format(perf['algo_volatility'][-1])
+		results['sharpe_ratio'] = "{:.2f}".format(perf['sharpe'][-1])
+		results['number_of_trades'] = "{:d}".format(len(trades))
+		results['mean_daily_returns'] = "{:.2f}".format((perf['returns'].mean(skipna=True))*100)+"%"
+		results['gross_returns'] = "{:.2f}".format(gross_ret*100)+"%"
 
 		return results
 
-	# results overview section: graph of price vs. return
 	def draw_graph(perf):
+		"""Results overview section - graph of price vs. return.
+
+		Parameters:
+		perf : pd.DataFrame, the overall results of a backtest
+
+		Returns:
+		plot_div : string, the html code of plot.ly graph, which can be
+					directly embedded into html code. Works together with
+					<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+		"""
 		asset = go.Scatter(x=perf.index, y=perf[trading_pair], name='Underlying')
 		returns = go.Scatter(x=perf.index, y=perf['algorithm_period_return'], name='Cumulative trading return', yaxis='y2')
 		data = [asset, returns]
@@ -91,8 +113,8 @@ def execute_backtest(start_dt, end_dt, init_cap,
 		plot_div = plotly.offline.plot(pyfig, include_plotlyjs=False, output_type='div')
 		return plot_div
 
-	# daily details section
 	def get_daily_details(perf):
+		"""Daily details section."""
 		# select rows for printing
 		outperf = perf[[trading_pair,'algorithm_period_return','returns','portfolio_value','algo_volatility','sharpe']]
 		# percentages: store as decimals, display as percentages in UI (possibly)
@@ -101,8 +123,16 @@ def execute_backtest(start_dt, end_dt, init_cap,
 		outperf.index = outperf.index.date
 		return outperf
 
-	# export to file section
 	def export_csv(outperf, perf):
+		"""Export to file section.
+
+		Parameters:
+		outperf : pd.DataFrame, the DataFrame in daily details section
+		perf : pd.DataFrame, the overall results of a backtest
+
+		Returns:
+		export_data : pd.DataFrame, the DataFrame to be converted to csv file
+		"""
 		export_data = outperf[[trading_pair,'total returns']]
 		export_data.insert(loc=2, column='orders', value=perf['orders'].values)
 		tradeset = []
@@ -113,24 +143,55 @@ def execute_backtest(start_dt, end_dt, init_cap,
 
 
 	startall = time.time() 
+	# run backtest
 	perf = zipline.run_algorithm(start=start_date,
 						end=end_date,
 						initialize=initialize,
 						capital_base=init_capital,
 						handle_data=handle_data,
 						data_frequency='minute',
-						bundle='csvdir',
-						trading_calendar=get_calendar('AOC')),
+						bundle=bundle_name,
+						trading_calendar=get_calendar('AOC')),  # AlwaysOpenCalendar
 	endall = time.time()
-	print(endall-startall)
+	print(endall-startall)  # only for testing
 
+	# retrieve perf dataframe from returned tuple
 	perf = perf[0]
+	# replace _asset column name with name of trading pair
 	perf.rename(columns={'_asset':trading_pair}, inplace=True)
 
+	# get results to display
 	res_overview = get_results_overview(perf)  # dict
 	graph_div = draw_graph(perf)  # div string
 	daily_details = get_daily_details(perf)  # pd.DataFrame
 	export_data = export_csv(daily_details, perf)  #pd.DataFrame
 
 	
-	return res_overview, graph_div, daily_details, export_data
+	return [res_overview, graph_div, daily_details, export_data]
+
+
+def compare(results, filename_list):
+	"""Comparison section.
+
+	Parameters:
+	results : list, each item is a dict of overview results from a set of strategies
+		result : dict, item of results, a return value of get_results_overview()
+	filename_list : list, name of uploaded strategies files
+
+	Returns:
+	comp : pd.DataFrame, comparison of the given results with highlights
+	"""
+
+	def max_yellow(s):
+		"""Color maximum in each row to yellow"""
+		is_max = s == s.max()
+		return ['background-color: yellow' if v else '' for v in is_max]
+
+	comp = pd.DataFrame(data=results, index=filename_list)
+	# rearrange sequence of columns
+	cols_sequence = ['total_returns','mean_daily_returns','gross_returns',
+				'number_of_trades','volatility','sharpe_ratio']
+	comp = comp[cols_sequence]
+
+	# comp = comp.style.apply(max_yellow)
+	return comp

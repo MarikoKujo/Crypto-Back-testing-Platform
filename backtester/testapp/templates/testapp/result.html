@@ -62,10 +62,12 @@
 				<div id="perftabs-daily">{{p.2|safe}}</div>
 				<div id="perftabs-comp">{{compare|safe}}</div>
 				<div id="perftabs-exp">
-					<form id="expfile" action="" method="post">{% csrf_token %}
-						<input type="text" id="filename" name="filename" class="text ui-widget-content ui-corner-all" value="test.csv">
-						<button type="button" id="savefile">Export</button>
-					</form><br>
+					<form name="{% cycle 'expfile-1' 'expfile-2' 'expfile-3' %}" class="expform" action="{% url 'testapp:export' %}" method="post">{% csrf_token %}
+						<input type="text" name="expname" class="ui-corner-all" required value="{% cycle 'tradingstrategy1' 'tradingstrategy2' 'tradingstrategy3' %}" />
+						<input type="text" name="expidx" style="display:none;" value="{% cycle '0' '1' '2' %}" />
+						<input type="submit" class="expbutton" value="Export" />
+					</form>
+					<label id="{% cycle 'expinfo-1' 'expinfo-2' 'expinfo-3' %}"> </label><br>
 					{{p.3|safe}}
 				</div>
 			</div>

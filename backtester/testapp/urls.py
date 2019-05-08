@@ -6,5 +6,6 @@ app_name = 'testapp'
 urlpatterns = [
     url(r'^$', views.index, name='index'),
     url(r'^results/$', views.results, name='results'),
-    url(r'^processing/$', views.processing, name='processing')
+    url(r'^processing/$', views.processing, name='processing'),
+    url(r'^export/$', views.export, name='export')
 ]

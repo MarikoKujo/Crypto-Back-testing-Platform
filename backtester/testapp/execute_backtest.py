@@ -17,7 +17,21 @@ bundle_name = 'csvdir'
 
 def execute_backtest(start_dt, end_dt, init_cap,
 					trading_pair, commission_method, commission_c, trades):
-	"""Execute a backtest and provide various performance analysis."""
+	"""Execute a backtest and provide various performance analysis.
+
+	Parameters:
+	start_dt : string, start date of backtest
+	end_dt : string, end date of backtest
+	init_cap : string, amount of capital base
+	trading_pair : string, one of the pre-set trading pairs
+	commission_method : string, pershare or pertrade
+	commission_c : string, numeric value for setting commission
+	trades : dict {pd.Timestamp : float}, trading signals including timestamps and corresponding trading amount
+
+	Returns:
+	perf : pd.DataFrame, the overall results of a backtest, only used as param for nested functions
+	[res_overview, graph_div, daily_details, export_data] : list
+	"""
 
 	start_date = pd.to_datetime(start_dt).tz_localize(timezone)
 	end_date = pd.to_datetime(end_dt).tz_localize(timezone)
@@ -52,7 +66,8 @@ def execute_backtest(start_dt, end_dt, init_cap,
 		# quant = 0 if timestamp of now is not in context.trades
 		quant = context.trades.get(get_datetime(), 0)
 		if quant != 0:
-			order(context.asset, quant)
+			order(context.asset, quant)  # place an order
+		# use "_asset" as a temporary placeholder col name for actual trading pair
 		record(_asset=data.current(context.asset,'price'))
 
 
@@ -114,7 +129,14 @@ def execute_backtest(start_dt, end_dt, init_cap,
 		return plot_div
 
 	def get_daily_details(perf):
-		"""Daily details section."""
+		"""Daily details section.
+
+		Parameters:
+		perf : pd.DataFrame, the overall results of a backtest
+
+		Returns:
+		outperf : pd.DataFrame, the daily details of a backtest's results
+		"""
 		# select rows for printing
 		outperf = perf[[trading_pair,'algorithm_period_return','returns','portfolio_value','algo_volatility','sharpe']]
 		# percentages: store as decimals, display as percentages in UI (possibly)
@@ -125,6 +147,7 @@ def execute_backtest(start_dt, end_dt, init_cap,
 
 	def export_csv(outperf, perf):
 		"""Export to file section.
+		The exported dataframe contains date index, asset price, total returns, trading signals.
 
 		Parameters:
 		outperf : pd.DataFrame, the DataFrame in daily details section
@@ -134,11 +157,12 @@ def execute_backtest(start_dt, end_dt, init_cap,
 		export_data : pd.DataFrame, the DataFrame to be converted to csv file
 		"""
 		export_data = outperf[[trading_pair,'total returns']]
-		export_data.insert(loc=2, column='orders', value=perf['orders'].values)
+		# export_data.insert(loc=2, column='orders', value=perf['orders'].values)
 		tradeset = []
 		for d in outperf.index:
-			tradeset.append([(t,a) for t,a in trades.items() if pd.to_datetime(t).date() == d])
-		export_data.insert(loc=3, column='trading data', value=tradeset)
+			# appending daily trading signals (timestamps are converted to strings)
+			tradeset.append([(t.strftime("%Y-%m-%d %H:%M:%S"),a) for t,a in trades.items() if pd.to_datetime(t).date() == d])
+		export_data.insert(loc=2, column='trading data', value=tradeset)
 		return export_data
 
 
@@ -151,12 +175,10 @@ def execute_backtest(start_dt, end_dt, init_cap,
 						handle_data=handle_data,
 						data_frequency='minute',
 						bundle=bundle_name,
-						trading_calendar=get_calendar('AOC')),  # AlwaysOpenCalendar
+						trading_calendar=get_calendar('AOC'))  # AlwaysOpenCalendar
 	endall = time.time()
 	print(endall-startall)  # only for testing
 
-	# retrieve perf dataframe from returned tuple
-	perf = perf[0]
 	# replace _asset column name with name of trading pair
 	perf.rename(columns={'_asset':trading_pair}, inplace=True)
 

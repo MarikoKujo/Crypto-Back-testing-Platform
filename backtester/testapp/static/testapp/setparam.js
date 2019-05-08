@@ -170,10 +170,3 @@ $( function() {
     }
   });
 });
-
-
-
-function msg() {
-  alert("It works.");
-}
-

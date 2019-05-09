@@ -5,13 +5,13 @@
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>Back-testing Environment</title>
-	<link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
-	<link rel="stylesheet" href="{% static "testapp/style.css" %}">
-    <link rel="stylesheet" href="{% static "testapp/dfstyle.css" %}">
-	<script src="https://code.jquery.com/jquery-1.12.4.js"></script>
-	<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+	<link rel="stylesheet" href="{% static "testapp/css/jquery-ui.css" %}">
+	<link rel="stylesheet" href="{% static "testapp/css/style.css" %}">
+    <link rel="stylesheet" href="{% static "testapp/css/dfstyle.css" %}">
+	<script src="{% static "testapp/js/jquery-1.12.4.js" %}"></script>
+	<script src="{% static "testapp/js/jquery-ui.js" %}"></script>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-    <script src="{% static "testapp/result.js" %}"></script>
+    <script src="{% static "testapp/js/result.js" %}"></script>
 </head>
 <body>
 	<input type="text" id="from" style="width:100px;" class="text ui-widget-content ui-corner-all" placeholder="{{ start_date }}" readonly>

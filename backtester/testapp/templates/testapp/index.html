@@ -5,35 +5,43 @@
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>Back-testing Environment</title>
-	<link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
-	<link rel="stylesheet" href="{% static "testapp/style.css" %}">
-    <link rel="stylesheet" href="{% static "testapp/dfstyle.css" %}">
-	<script src="https://code.jquery.com/jquery-1.12.4.js"></script>
-	<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
-    <script src="{% static "testapp/setparam.js" %}"></script>
+	<link rel="stylesheet" href="{% static "testapp/css/jquery-ui.css" %}">
+	<link rel="stylesheet" href="{% static "testapp/css/style.css" %}">
+	<script src="{% static "testapp/js/jquery-1.12.4.js" %}"></script>
+    <script src="{% static "testapp/js/jquery-ui.js" %}"></script>
+    <script src="{% static "testapp/js/setparam.js" %}"></script>
+    <script src="{% static "testapp/js/jquery.blockUI.js" %}"></script>
+    <script type="text/javascript">
+    // the loading spinner for running backtests
+    $(document).on("submit", "form#backtestparams", function() {
+      $.blockUI({
+        message: '<img src="{% static "testapp/spinner.gif" %}" alt="" width="100px" /> <br>Backtests running,<br>please wait...'
+      });
+    });
+    </script>
 </head>
 <body>
     {% if error_message %}<p><strong style="color:red;">{{ error_message }}</strong></p>{% endif %}
     <form id="backtestparams" action="{% url 'testapp:processing' %}" enctype="multipart/form-data" method="post">{% csrf_token %}
-        <input type="text" id="from" name="from" style="width:100px;" class="text ui-widget-content ui-corner-all" placeholder="start date" required readonly>
+        <input type="text" id="from" name="from" style="width:100px;" class="text ui-widget-content ui-corner-all" placeholder="start date" required readonly />
     	<label for="to">to</label>
-		<input type="text" id="to" name="to" style="width:100px;" class="text ui-widget-content ui-corner-all" placeholder="end date" required readonly>
+		<input type="text" id="to" name="to" style="width:100px;" class="text ui-widget-content ui-corner-all" placeholder="end date" required readonly />
         <label for="capital">&nbsp; capital base</label>
         <input type="text" id="capital" name="capital" style="width:100px;" class="text ui-widget-content ui-corner-all" value="100000" 
-        required pattern="[0-9]*[.]?[0-9]+" title="positive number with or without decimals">
+        required pattern="[0-9]*[.]?[0-9]+" title="positive number with or without decimals" />
         <label for="tradingpair">&nbsp; trading pair</label>
         <select id="tradingpair" name="tradingpair" class="text ui-widget-content ui-corner-all">
         {% for asset in assets %}
             <option value="{{ asset }}"> {{ asset }} </option>
         {% endfor %}
         </select>
-        <input type="submit" id="submitparams" value="Run Backtest">
-        <input type="text" style="display:none;" name="comm" id="comm" value="pershare">
-        <input type="text" style="display:none;" name="commamount" id="commamount" value="0.1">
+        <input type="submit" id="submitparams" value="Run Backtest" />
+        <input type="text" style="display:none;" name="comm" id="comm" value="pershare" />
+        <input type="text" style="display:none;" name="commamount" id="commamount" value="0.1" />
         <button type="button" id="settings">Settings</button>
         <br>
         <label id="infolabel" for="strategies">Select trading strategy files in .csv format:</label>
-        <input type="file" id="strategies" name="strategies" accept=".csv" multiple>
+        <input type="file" id="strategies" name="strategies" accept=".csv" multiple />
     </form>
 
     <hr>

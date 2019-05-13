@@ -1,3 +1,4 @@
+from django.conf import settings as djangoSettings
 from django.shortcuts import get_object_or_404, render
 from django.http import HttpResponse, HttpResponseRedirect
 from django.template import loader
@@ -5,12 +6,14 @@ from django.urls import reverse
 
 from io import StringIO
 from .execute_backtest import execute_backtest, compare
+from .get_prefixes import get_prefixes
 from datetime import datetime
 from google.cloud import storage
 
 import csv
 import pandas as pd
 import json
+import subprocess
 
 
 # available trading pairs
@@ -20,8 +23,11 @@ assets_list = ['BTCUSDT','ETHBTC','XLMBTC','XRPBTC']
 df_class = 'dfstyle'
 
 # for using Google Cloud Storage
-# bucket name(a.k.a. id) for storing exported backtest results
 GS_RESULTS_BUCKET_NAME = 'idp_backtest_results'
+GS_CRAWLERDATA_BUCKET_NAME = 'idp_crypto'
+
+# for saving #-aggregates.csv
+aggr_path = djangoSettings.MEDIA_ROOT
 
 
 
@@ -30,6 +36,26 @@ def index(request):
 	context = {'assets': assets_list}
 	# return HttpResponse(loader.get_template('testapp/index.html').render(context, request))
 	return render(request, 'testapp/index.html', context)
+
+def ingest(request):
+	# ingest!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	# out = subprocess.Popen(['zipline','bundles'],
+	# 			stdout=subprocess.PIPE,
+	# 			stderr=subprocess.STDOUT)
+	# stdout,stderr = out.communicate()
+	# print(stdout)  # it works!
+
+	# client = storage.Client()
+	# bucket = client.get_bucket(GS_RESULTS_BUCKET_NAME)
+	# fblob = bucket.get_blob('20190507-002944_file1.csv')
+
+	# print(fblob.time_created) # timestamp in utc
+	# print(fblob.name)
+	# fblob.download_to_filename(aggr_path+'checkitout.csv')
+	starttime = "2018-12-03 00:26:00"
+	print(get_prefixes(starttime, end="2018-12-04 00:20:00"))
+	
+	return HttpResponse('lala')
 
 def export(request):
 	if request.method == 'POST':
@@ -94,8 +120,12 @@ def processing(request):
 				error_message = 'Invalid csv: ' + afile.name
 				context = {'assets': assets_list, 'error_message': error_message}
 				return render(request, 'testapp/index.html', context)
+		else:  # for now refuse file > 5 MB
+			error_message = "Single file should not be larger than 5 MB"
+			context = {'assets': assets_list, 'error_message': error_message}
+			return render(request, 'testapp/index.html', context)
 		# else: 
-		#	deal with file larger than 2.5M here, maybe need to write to disk in chunks
+		#	deal with file larger than 5M here, maybe need to write to disk in chunks
 		#	try to readline and feed into StringIO using loop? avoid disk manipulation
 
 		# chop '.csv' suffix from filename before displaying

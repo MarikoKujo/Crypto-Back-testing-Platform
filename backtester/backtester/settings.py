@@ -124,5 +124,10 @@ STATIC_URL = '/static/'
 # In order to add file upload functionality
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = os.path.join(BASE_DIR, 'aggregates/')
 
+
+# Set max size of uploaded file to store in memory (5M)
+# https://docs.djangoproject.com/en/1.11/ref/settings/#file-upload-max-memory-size
+
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5242880

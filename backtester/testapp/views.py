@@ -7,12 +7,14 @@ from django.urls import reverse
 from io import StringIO
 from .execute_backtest import execute_backtest, compare
 from .get_prefixes import get_prefixes
+from .csv_concat import csv_concat
 from datetime import datetime
 from google.cloud import storage
 
 import csv
 import pandas as pd
 import json
+import os
 import subprocess
 
 
@@ -38,22 +40,53 @@ def index(request):
 	return render(request, 'testapp/index.html', context)
 
 def ingest(request):
-	# ingest!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	# # ingest!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	# out = subprocess.Popen(['zipline','bundles'],
 	# 			stdout=subprocess.PIPE,
 	# 			stderr=subprocess.STDOUT)
 	# stdout,stderr = out.communicate()
 	# print(stdout)  # it works!
 
-	# client = storage.Client()
-	# bucket = client.get_bucket(GS_RESULTS_BUCKET_NAME)
-	# fblob = bucket.get_blob('20190507-002944_file1.csv')
+	# # ------------------------
+	# # time of last ingestion, UTC
+	# # first file should get stored at about 00:06-00:10
+	# starttime = "2018-12-03 00:00:00"
+	# # time of now, UTC. only used for testing
+	# endtime = "2018-12-04 00:20:00"
 
-	# print(fblob.time_created) # timestamp in utc
-	# print(fblob.name)
-	# fblob.download_to_filename(aggr_path+'checkitout.csv')
-	starttime = "2018-12-03 00:26:00"
-	print(get_prefixes(starttime, end="2018-12-04 00:20:00"))
+	# client = storage.Client()
+	# # set bucket to crawler data bucket
+	# bucket = client.get_bucket(GS_CRAWLERDATA_BUCKET_NAME)
+	# # get all possible prefixes of files collected between starttime and endtime
+	# prefixes = get_prefixes(starttime, end=endtime)
+	# for prefix in prefixes:
+	# 	print(prefix)
+	# 	# look up files in bucket using prefix to speed up searching
+	# 	fblobs = bucket.list_blobs(prefix=prefix)
+	# 	# download *aggregates.csv
+	# 	for fblob in fblobs:
+	# 		if fblob.name.endswith('aggregates.csv'):
+	# 			fblob.download_to_filename(aggr_path+fblob.name)
+	# # ------------------------
+	
+
+	# cwd = os.getcwd()
+	arranged_path = os.path.join(aggr_path, 'arranged/minute/')
+	ingest_path = os.path.join(aggr_path, 'arranged/')
+	
+	# csv_concat(aggr_path, arranged_path, symbols=assets_list)
+
+	# os.chdir(cwd)
+
+	csvdir_path = os.path.join('CSVDIR=', ingest_path)
+	# out = subprocess.Popen([csvdir_path,'zipline','ingest','-b','csvdir'],
+	# 		stdout=subprocess.PIPE,
+	# 		stderr=subprocess.STDOUT)
+	out = subprocess.Popen(csvdir_path+' zipline ingest -b csvdir',
+			stdout=subprocess.PIPE,
+			stderr=subprocess.STDOUT)
+	stdout,stderr = out.communicate()
+	print(stdout)
 	
 	return HttpResponse('lala')
 

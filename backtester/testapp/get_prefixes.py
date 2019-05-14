@@ -5,35 +5,35 @@ def get_prefixes(start, end=None):
 	"""Generate prefixes for searching files in idp_crypto bucket.
 	A filename uses a UNIX timestamp as prefix. Thus we are able to 
 	list files created in a certain period of time.
-	Normally start time is 00:00:00 of last day, and end time is set 
+	Normally start time is 00:20:00 of last day, and end time is set 
 	to 00:20:00 of current day, given that collection of yesterday's 
 	data should be finished then. 
 
 	----------------------------------
 	Examples:
 
-	1541030400 2018-11-01 00:00:00 start
+	1541031600 2018-11-01 00:20:00 start
 	1541118000 2018-11-02 00:20:00 end
 	prefixes:
 	head1	tail1
-	1541030-1541039
+	1541031-1541039
 	head2	tail2
 	154104 -154109
 	head3	tail3
 	154110 -154111
 
-	1543795200 2018-12-03 00:00:00 start
+	1543796400 2018-12-03 00:20:00 start
 	1543882800 2018-12-04 00:20:00 end
 	prefixes:
 	head1	tail1
-	1543795-1543799
+	1543796-1543799
 	head2	tail2
 	154380 -154389
 	154389 >= 154388 : no head3 && tail3
 	----------------------------------
 
 	Parameters:
-	start : string, in format of "2018-11-01 00:00:00", UTC
+	start : string, in format of "2018-11-01 00:20:00", UTC
 	end : string, 00:20:00 of current day by default, UTC. This param 
 			is only used for testing.
 

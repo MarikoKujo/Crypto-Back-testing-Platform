@@ -5,7 +5,8 @@ $(document).ready(function() {
         changeMonth: true,
 	      changeYear: true,
 	      minDate: new Date("2018-10-24"),
-	      maxDate: "-2D",
+        maxDate: new Date(ingest_date_max_From),
+	      // maxDate: "-2D",
 	      dateFormat: "yy-mm-dd"
         })
         .on( "change", function() {
@@ -15,7 +16,8 @@ $(document).ready(function() {
         changeMonth: true,
         changeYear: true,
         minDate: new Date("2018-10-25"),
-        maxDate: "-1D",
+        maxDate: new Date(ingest_date_max_To),
+        // maxDate: "-1D",
         dateFormat: "yy-mm-dd"
       })
       .on( "change", function() {

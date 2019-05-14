@@ -3,7 +3,7 @@ import glob, os  # for reading (and moving) csv files
 
 default_symbols = ['BTCUSDT','ETHBTC','XLMBTC','XRPBTC']
 
-def csv_concat(csv_path, arranged_path, symbols=default_symbols):
+def concat_new_csvs(csv_path, arranged_path, symbols=default_symbols):
 	dataset = [[] for symbol in symbols]  # init an empty list
 	must_have_cols = ['symbol','eventTime','openPrice',
 					'highPrice','lowPrice','price','volume']
@@ -26,7 +26,7 @@ def csv_concat(csv_path, arranged_path, symbols=default_symbols):
 			dataset[idx].append((part[part.symbol==sym]).drop(columns=['symbol']))
 
 	# for every asset: change column names, deal with (possibly) wrong timestamps, 
-	# and save to a single file
+	# and concat to old asset file
 	for idx,symbol in enumerate(symbols):
 		# concat data for every single asset
 		data = pd.concat(dataset[idx], ignore_index=True)
@@ -56,8 +56,20 @@ def csv_concat(csv_path, arranged_path, symbols=default_symbols):
 					data.at[row2.Index, 'date'] = row1_date + okay
 			row1_date = data.at[row2.Index,'date']
 				
-		# save to file
-		############directly save to a 'minute' folder here?(and return dir of it)
-		data.to_csv(os.path.join(arranged_path,symbol+'.csv'), 
+		# concat to old file
+		try:
+			old = pd.read_csv(arranged_path+symbol+'.csv')
+		except FileNotFoundError:
+			data.to_csv(os.path.join(arranged_path,symbol+'.csv'), 
+				index=False, float_format='%.10f')
+			return
+
+		old['date'] = pd.to_datetime(old['date'])
+		# drop the last rows if timestamps are not continuous
+		while old.iloc[-1,0] >= data.iloc[0,0]:
+			old = old[:-1]
+		# concat and rewrite
+		old = pd.concat([old,data], ignore_index=True)
+		old.to_csv(os.path.join(arranged_path,symbol+'.csv'), 
 					index=False, float_format='%.10f')
 		print('asset %s ok' % symbol)

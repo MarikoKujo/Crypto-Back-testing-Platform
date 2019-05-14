@@ -7,15 +7,14 @@ from django.urls import reverse
 from io import StringIO
 from .execute_backtest import execute_backtest, compare
 from .get_prefixes import get_prefixes
-from .csv_concat import csv_concat
-from datetime import datetime
+from .csv_concat import concat_new_csvs
+from datetime import datetime, timedelta
 from google.cloud import storage
 
 import csv
 import pandas as pd
 import json
-import os
-import subprocess
+import subprocess, glob, os
 
 
 # available trading pairs
@@ -30,27 +29,45 @@ GS_CRAWLERDATA_BUCKET_NAME = 'idp_crypto'
 
 # for saving #-aggregates.csv
 aggr_path = djangoSettings.MEDIA_ROOT
+# record file of ingest time
+record_file = aggr_path+'last_ingest.txt'
 
 
 
 # Create your views here.
 def index(request):
-	context = {'assets': assets_list}
+	# read the latest date with complete ingestion from file
+	try:
+		with open(record_file,'r') as record:
+			max_to = record.read()
+		max_to = max_to[:len('2019-05-01')]
+		max_to = datetime.strptime(max_to, '%Y-%m-%d')-timedelta(days=1)
+	except:
+		max_to = datetime.utcnow().date()-timedelta(days=1)
+	
+	max_from = max_to-timedelta(days=1)
+
+	context = {'assets': assets_list, 
+				'max_to': max_to.strftime('%Y-%m-%d'),
+				'max_from': max_from.strftime('%Y-%m-%d')}
 	# return HttpResponse(loader.get_template('testapp/index.html').render(context, request))
 	return render(request, 'testapp/index.html', context)
 
 def ingest(request):
-	# # ingest!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	# out = subprocess.Popen(['zipline','bundles'],
-	# 			stdout=subprocess.PIPE,
-	# 			stderr=subprocess.STDOUT)
-	# stdout,stderr = out.communicate()
-	# print(stdout)  # it works!
 
+	try:
+		# read start time from file
+		with open(record_file,'r') as record:
+			starttime = record.read()
+		starttime = starttime[:len('2019-05-01 00:00:00')]
+	except:
+		# set start time as yesterday
+		starttime = (datetime.utcnow().date()-timedelta(days=1)).strftime('%Y-%m-%d')
+	print(starttime)
 	# # ------------------------
 	# # time of last ingestion, UTC
 	# # first file should get stored at about 00:06-00:10
-	# starttime = "2018-12-03 00:00:00"
+	# starttime = "2018-12-03 00:20:00"
 	# # time of now, UTC. only used for testing
 	# endtime = "2018-12-04 00:20:00"
 
@@ -74,19 +91,37 @@ def ingest(request):
 	arranged_path = os.path.join(aggr_path, 'arranged/minute/')
 	ingest_path = os.path.join(aggr_path, 'arranged/')
 	
-	# csv_concat(aggr_path, arranged_path, symbols=assets_list)
+	# concat_new_csvs(aggr_path, arranged_path, symbols=assets_list)
+
+	# os.chdir(aggr_path)
+	# for f in glob.glob('*aggregates.csv'):
+	# 	os.remove(f)
 
 	# os.chdir(cwd)
 
-	csvdir_path = os.path.join('CSVDIR=', ingest_path)
-	# out = subprocess.Popen([csvdir_path,'zipline','ingest','-b','csvdir'],
+	# # clean old data and ingest new data
+	# my_env = os.environ.copy()
+	# my_env["CSVDIR"] = ingest_path
+	# bname = 'csvdir'
+	# utc_today = datetime.utcnow().date().strftime('%Y-%m-%d')
+	# # clean_cmd = ['zipline','clean','-b',bname,'--before',utc_today]
+	# # for testing
+	# clean_cmd = ['zipline','clean','-b',bname,'--after','2019-05-12']
+	# ingest_cmd = ['zipline','ingest','-b',bname]
+
+	# out = subprocess.Popen(clean_cmd, 
+	# 		stderr=subprocess.STDOUT)
+
+	# out = subprocess.Popen(ingest_cmd,
+	# 		env=my_env,
 	# 		stdout=subprocess.PIPE,
 	# 		stderr=subprocess.STDOUT)
-	out = subprocess.Popen(csvdir_path+' zipline ingest -b csvdir',
-			stdout=subprocess.PIPE,
-			stderr=subprocess.STDOUT)
-	stdout,stderr = out.communicate()
-	print(stdout)
+
+	# stdout,stderr = out.communicate()
+	# print(stdout)
+
+	# with open(record_file,'w') as record:
+	# 	print(utc_today+' 00:20:00', file=record)
 	
 	return HttpResponse('lala')
 

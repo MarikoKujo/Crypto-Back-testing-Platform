@@ -9,6 +9,11 @@
 	<link rel="stylesheet" href="{% static "testapp/css/style.css" %}">
 	<script src="{% static "testapp/js/jquery-1.12.4.js" %}"></script>
     <script src="{% static "testapp/js/jquery-ui.js" %}"></script>
+    <script type="text/javascript">
+    // set max dates for datepickers
+    var ingest_date_max_From = "{{ max_from }}";
+    var ingest_date_max_To = "{{ max_to }}";
+    </script>
     <script src="{% static "testapp/js/setparam.js" %}"></script>
     <script src="{% static "testapp/js/jquery.blockUI.js" %}"></script>
     <script type="text/javascript">

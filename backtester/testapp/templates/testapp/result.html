@@ -63,7 +63,7 @@
 				<div id="perftabs-comp">{{compare|safe}}</div>
 				<div id="perftabs-exp">
 					<form name="{% cycle 'expfile-1' 'expfile-2' 'expfile-3' %}" class="expform" action="{% url 'testapp:export' %}" method="post">{% csrf_token %}
-						<input type="text" name="expname" class="ui-corner-all" required value="{% cycle 'tradingstrategy1' 'tradingstrategy2' 'tradingstrategy3' %}" />
+						<input type="text" name="expname" class="ui-corner-all" required pattern="[a-zA-Z0-9_\-\.]+" title="Please only use letters, numbers and . _ -" value="{% cycle 'tradingstrategy1' 'tradingstrategy2' 'tradingstrategy3' %}" />
 						<input type="text" name="expidx" style="display:none;" value="{% cycle '0' '1' '2' %}" />
 						<input type="submit" class="expbutton" value="Export" />
 					</form>

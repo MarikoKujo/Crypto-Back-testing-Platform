@@ -1,8 +1,9 @@
 from django.conf import settings as djangoSettings
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import render
 from django.http import HttpResponse, HttpResponseRedirect
 from django.template import loader
 from django.urls import reverse
+import logging
 
 from io import StringIO
 from .execute_backtest import execute_backtest, compare
@@ -17,6 +18,9 @@ import json
 import subprocess, glob, os
 
 
+# Get an instance of a logger
+logger = logging.getLogger(__name__)
+
 # available trading pairs
 assets_list = ['BTCUSDT','ETHBTC','XLMBTC','XRPBTC']
 
@@ -27,7 +31,7 @@ df_class = 'dfstyle'
 GS_RESULTS_BUCKET_NAME = 'idp_backtest_results'
 GS_CRAWLERDATA_BUCKET_NAME = 'idp_crypto'
 
-# for saving #-aggregates.csv
+# for saving *aggregates.csv
 aggr_path = djangoSettings.MEDIA_ROOT
 # record file of ingest time
 record_file = aggr_path+'last_ingest.txt'
@@ -36,6 +40,7 @@ record_file = aggr_path+'last_ingest.txt'
 
 # Create your views here.
 def index(request):
+	"""Index page of backtester."""
 	# read the latest date with complete ingestion from file
 	try:
 		with open(record_file,'r') as record:
@@ -43,8 +48,11 @@ def index(request):
 		max_to = max_to[:len('2019-05-01')]
 		max_to = datetime.strptime(max_to, '%Y-%m-%d')-timedelta(days=1)
 	except:
+		logger.exception('Cannot read last ingest or convert to datetime')
+		# set max_to as yesterday
 		max_to = datetime.utcnow().date()-timedelta(days=1)
 	
+	# max_from should be one day earlier than max_to
 	max_from = max_to-timedelta(days=1)
 
 	context = {'assets': assets_list, 
@@ -53,107 +61,156 @@ def index(request):
 	# return HttpResponse(loader.get_template('testapp/index.html').render(context, request))
 	return render(request, 'testapp/index.html', context)
 
-def ingest(request):
 
+def ingest(request):
+	"""Run as a cron job at 00:30 every day.
+	Set cron jobs in cron.yaml file.
+	See:
+	cloud.google.com/appengine/docs/flexible/python/scheduling-jobs-with-cron-yaml
+	"""
 	try:
 		# read start time from file
 		with open(record_file,'r') as record:
+			# time of last ingestion, UTC
 			starttime = record.read()
-		starttime = starttime[:len('2019-05-01 00:00:00')]
+		# remove possible line break char
+		starttime = starttime[:len('2019-05-01 00:20:00')]
 	except:
-		# set start time as yesterday
+		logger.exception('Cannot read last ingest time from file correctly')
+		# set start time as yesterday, 00:20:00
 		starttime = (datetime.utcnow().date()-timedelta(days=1)).strftime('%Y-%m-%d')
-	print(starttime)
-	# # ------------------------
-	# # time of last ingestion, UTC
-	# # first file should get stored at about 00:06-00:10
-	# starttime = "2018-12-03 00:20:00"
-	# # time of now, UTC. only used for testing
-	# endtime = "2018-12-04 00:20:00"
-
-	# client = storage.Client()
-	# # set bucket to crawler data bucket
-	# bucket = client.get_bucket(GS_CRAWLERDATA_BUCKET_NAME)
-	# # get all possible prefixes of files collected between starttime and endtime
-	# prefixes = get_prefixes(starttime, end=endtime)
-	# for prefix in prefixes:
-	# 	print(prefix)
-	# 	# look up files in bucket using prefix to speed up searching
-	# 	fblobs = bucket.list_blobs(prefix=prefix)
-	# 	# download *aggregates.csv
-	# 	for fblob in fblobs:
-	# 		if fblob.name.endswith('aggregates.csv'):
-	# 			fblob.download_to_filename(aggr_path+fblob.name)
-	# # ------------------------
+		starttime = starttime+' 00:20:00'
 	
+	# # time of now, UTC
+	# endtime = "2018-11-14 00:20:00"
+	endtime = datetime.utcnow().date().strftime('%Y-%m-%d')+' 00:20:00'
 
-	# cwd = os.getcwd()
+	logger.info('Attempt to ingest data from '+starttime+' to '+endtime)
+
+	try:
+		client = storage.Client()
+		# set bucket to crawler data bucket
+		bucket = client.get_bucket(GS_CRAWLERDATA_BUCKET_NAME)
+	except:
+		logger.exception('Cannot get crawler data bucket from Google Cloud Storage')
+		return HttpResponse(status=502)  # Bad Gateway
+	# get all possible prefixes of files collected between starttime and endtime
+	prefixes = get_prefixes(starttime, end=endtime)
+	for prefix in prefixes:
+		logger.info(prefix)
+		# look up files in bucket using prefix to speed up searching
+		fblobs = bucket.list_blobs(prefix=prefix)
+		# download *aggregates.csv
+		for fblob in fblobs:
+			if fblob.name.endswith('aggregates.csv'):
+				fblob.download_to_filename(aggr_path+fblob.name)
+
+	logger.info('Downloading completed')
+
+	# current working directory
+	cwd = os.getcwd()
+	# path of old asset price files
 	arranged_path = os.path.join(aggr_path, 'arranged/minute/')
+	# path for data ingestion
 	ingest_path = os.path.join(aggr_path, 'arranged/')
 	
-	# concat_new_csvs(aggr_path, arranged_path, symbols=assets_list)
+	# data preparation
+	concat_new_csvs(aggr_path, arranged_path, symbols=assets_list)
+	logger.info('Data preparation completed')
 
-	# os.chdir(aggr_path)
-	# for f in glob.glob('*aggregates.csv'):
-	# 	os.remove(f)
+	os.chdir(cwd)
 
-	# os.chdir(cwd)
+	# clean old data and ingest new data
+	my_env = os.environ.copy()
+	my_env["CSVDIR"] = ingest_path
+	# data bundle name. In case change, also change bundle_name in execute_backtest.py
+	bname = 'csvdir'
+	utc_today = datetime.utcnow().date().strftime('%Y-%m-%d')
+	# for testing
+	clean_cmd = ['zipline','clean','-b',bname,'--after','2019-05-12']
+	# clean_cmd = ['zipline','clean','-b',bname,'--before',utc_today]
+	ingest_cmd = ['zipline','ingest','-b',bname]
 
-	# # clean old data and ingest new data
-	# my_env = os.environ.copy()
-	# my_env["CSVDIR"] = ingest_path
-	# bname = 'csvdir'
-	# utc_today = datetime.utcnow().date().strftime('%Y-%m-%d')
-	# # clean_cmd = ['zipline','clean','-b',bname,'--before',utc_today]
-	# # for testing
-	# clean_cmd = ['zipline','clean','-b',bname,'--after','2019-05-12']
-	# ingest_cmd = ['zipline','ingest','-b',bname]
+	# clean old ingestion
+	out = subprocess.Popen(clean_cmd, 
+			stdout=subprocess.PIPE,
+			stderr=subprocess.PIPE)
+	_, stderr = out.communicate()
+	if (stderr is not None) and (stderr != ""):
+		logger.warning(stderr)
+	# do new ingestion
+	out = subprocess.Popen(ingest_cmd,
+			env=my_env,
+			stdout=subprocess.PIPE,
+			stderr=subprocess.PIPE)
+	stdout,stderr = out.communicate()
+	logger.info(stdout)
+	if (stderr is not None) and (stderr != ""):
+		logger.error(stderr)
+		# return HttpResponse(status=500)  # Internal Server Error
 
-	# out = subprocess.Popen(clean_cmd, 
-	# 		stderr=subprocess.STDOUT)
+	try:
+		with open(record_file,'w') as record:
+			# print(utc_today+' 00:20:00', file=record)
+			print(endtime, file=record)
+		logger.info('Writing last ingest time to file completed')
+	except:
+		logger.exception('Cannot write last ingest time to file')
 
-	# out = subprocess.Popen(ingest_cmd,
-	# 		env=my_env,
-	# 		stdout=subprocess.PIPE,
-	# 		stderr=subprocess.STDOUT)
+	# delete downloaded *aggregates.csv files
+	os.chdir(aggr_path)
+	try:
+		for f in glob.glob('*aggregates.csv'):
+			os.remove(f)
+		logger.info('*aggregates.csv files removed')
+	except:
+		logger.exception('Cannot remove *aggregates.csv files')
 
-	# stdout,stderr = out.communicate()
-	# print(stdout)
+	os.chdir(cwd)
 
-	# with open(record_file,'w') as record:
-	# 	print(utc_today+' 00:20:00', file=record)
-	
-	return HttpResponse('lala')
+	logger.info('Ingestion of data from '+starttime+' to '+endtime+' completed')
+	return HttpResponse(msg)
+
 
 def export(request):
+	"""Export backtest result to .csv file and store in Google Cloud Storage."""
 	if request.method == 'POST':
 		
-		# !!!!!important: wrap things up with try-catch
-
 		# generate file name
 		namestr = request.POST['expname']
 		timestr = datetime.now().strftime("%Y%m%d-%H%M%S")
 		fname = timestr+'_'+namestr+'.csv'
 
-		# # get file string for exporting
-		# exp_list = request.session['exp_list']
-		# expidx = int(request.POST['expidx'])
-		# dfs_json = exp_list[expidx]
-		# dfs = pd.read_json(dfs_json)
-		# fstring = dfs.to_csv(index_label=False)
+		try:  # get file string for exporting
+			exp_list = request.session['exp_list']
+			expidx = int(request.POST['expidx'])
+			dfs_json = exp_list[expidx]
+			dfs = pd.read_json(dfs_json)
+			fstring = dfs.to_csv(index_label='date')
+		except:
+			logger.exception('Cannot convert to csv file')
+			return HttpResponse('Error: Cannot convert to csv file.')
 
-		# # export file to storage bucket
-		# client = storage.Client()
-		# bucket = client.get_bucket(GS_RESULTS_BUCKET_NAME)
-		# fblob = bucket.blob(fname)
-		# fblob.upload_from_string(fstring, content_type='text/csv')
+		try:  # export file to storage bucket
+			client = storage.Client()
+			bucket = client.get_bucket(GS_RESULTS_BUCKET_NAME)
+			fblob = bucket.blob(fname)
+			fblob.upload_from_string(fstring, content_type='text/csv')
+		except:
+			logger.exception('Cannot upload to backtest results bucket')
+			return HttpResponse('Error: Cannot upload to Google Cloud Storage.')
 
 		return HttpResponse(fname+' successfully exported.')
 
 	# ideally this should not be reached
-	return render(request, 'testapp/result.html', context)
+	return HttpResponseRedirect(reverse('testapp:results'))
+
 
 def results(request):
+	"""Display backtest results."""
+	if 'perf' not in request.session:
+		return HttpResponseRedirect(reverse('testapp:index'))
+
 	context = {'assets': assets_list}
 	context['perf'] = request.session['perf']
 	context['compare'] = request.session['compare']
@@ -165,7 +222,9 @@ def results(request):
 
 	return render(request, 'testapp/result.html', context)
 
+
 def processing(request):
+	"""Run backtests."""
 	if request.method != 'POST':  # this page should not be accessed without POST data
 		return HttpResponseRedirect(reverse('testapp:index'))
 
@@ -201,7 +260,6 @@ def processing(request):
 			filename_list.append(afile.name[:-len('.csv')])
 		else:
 			filename_list.append(afile.name)
-		print(afile.name)
 		trades_list.append(trades)
 
 	# get other parameters for backtesting
@@ -221,19 +279,24 @@ def processing(request):
 	perf_list = []
 	res_overview_list = []
 	for idx,trade in enumerate(trades_list):
-		# perf : [res_overview, graph_div, daily_details, export_data]
-		# list : [dict, string(html_div), pd.DataFrame, pd.DataFrame]
-		perf = execute_backtest(start_date, end_date, init_capital, trading_pair, 
-							commission_method, commission_cost, trade)
-		print('backtest and analysis %d done' % idx)
+		try:
+			# perf : [res_overview, graph_div, daily_details, export_data]
+			# list : [dict, string(html_div), pd.DataFrame, pd.DataFrame]
+			perf = execute_backtest(start_date, end_date, init_capital, trading_pair, 
+								commission_method, commission_cost, trade)
+		except:
+			error_message = "Cannot complete backtest for strategy {0}".format(idx)
+			logger.exception(error_message)
+			context = {'assets': assets_list, 'error_message': error_message}
+			return render(request, 'testapp/index.html', context)
 
 		# render export_data dataframe to json string to store in session
 		# this string can be rendered back to original dataframe for downloading purpose
 		exp_list.append(perf[3].to_json())
 
 		# render two dataframes to html strings to store in session
-		perf[2] = perf[2].to_html(classes=df_class)  # daily_details
-		perf[3] = perf[3].to_html(classes=df_class)  # export_data
+		perf[2] = perf[2].to_html(classes=df_class, max_rows=50)  # daily_details
+		perf[3] = perf[3].to_html(classes=df_class, max_rows=50)  # export_data
 		perf_list.append(perf)  # [res_overview, graph_div, daily_details, export_data]
 		
 		# will be used as param for compare() for results comparison
@@ -256,5 +319,5 @@ def processing(request):
 	request.session['trading_pair'] = trading_pair
 	request.session['filename_list'] = filename_list
 
-	
+	# Redirect to results display page
 	return HttpResponseRedirect(reverse('testapp:results'))

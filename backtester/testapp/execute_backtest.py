@@ -8,11 +8,11 @@ import time
 import pandas as pd
 import plotly.plotly as pltly
 import plotly.graph_objs as go
-# from plotly.offline import download_plotlyjs, plot
 import plotly.offline
 
 
 timezone = 'UTC'
+# data bundle name. In case change, also change bname in views.py
 bundle_name = 'csvdir'
 
 def execute_backtest(start_dt, end_dt, init_cap,

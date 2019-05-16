@@ -4,6 +4,17 @@ import glob, os  # for reading (and moving) csv files
 default_symbols = ['BTCUSDT','ETHBTC','XLMBTC','XRPBTC']
 
 def concat_new_csvs(csv_path, arranged_path, symbols=default_symbols):
+	"""Price data preparation process.
+	Clean newly downloaded data and concat to old price files.
+
+	Parameters:
+	csv_path : string, path of newly downloaded *-aggregates.csv files
+	arranged_path : string, path of old asset price files
+	symbols : list, asset symbols
+
+	Returns:
+	No return values. New price files are saved to arranged_path.
+	"""
 	dataset = [[] for symbol in symbols]  # init an empty list
 	must_have_cols = ['symbol','eventTime','openPrice',
 					'highPrice','lowPrice','price','volume']
@@ -59,10 +70,11 @@ def concat_new_csvs(csv_path, arranged_path, symbols=default_symbols):
 		# concat to old file
 		try:
 			old = pd.read_csv(arranged_path+symbol+'.csv')
-		except FileNotFoundError:
+		except:  # FileNotFoundError
 			data.to_csv(os.path.join(arranged_path,symbol+'.csv'), 
 				index=False, float_format='%.10f')
-			return
+			print('asset %s ok' % symbol)
+			continue
 
 		old['date'] = pd.to_datetime(old['date'])
 		# drop the last rows if timestamps are not continuous

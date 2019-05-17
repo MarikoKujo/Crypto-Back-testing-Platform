@@ -131,3 +131,38 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'aggregates/')
 # https://docs.djangoproject.com/en/1.11/ref/settings/#file-upload-max-memory-size
 
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5242880
+
+
+# Logging configuration
+# Writes all logging of level 'INFO' 'WARNING' 'ERROR' 'CRITICAL' to a log file
+# https://docs.djangoproject.com/en/1.11/topics/logging/
+# https://docs.djangoproject.com/en/1.11/topics/logging/#django-logger
+# https://docs.djangoproject.com/en/1.11/ref/settings/#std:setting-LOGGING
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            # 'format': '%(levelname)s %(asctime)s %(module)s %(process)d %(thread)d %(message)s'
+            'format': '%(levelname)s %(asctime)s %(module)s %(message)s'
+        },
+        'simple': {
+            'format': '%(asctime)s %(message)s'
+        },
+    },
+    'handlers': {
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'debug.log'),
+            'formatter':'verbose',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['file'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}

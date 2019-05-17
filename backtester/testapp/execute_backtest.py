@@ -3,7 +3,6 @@ from zipline.api import symbol, order, record, get_datetime, set_commission, com
 from trading_calendars import get_calendar
 
 from datetime import datetime
-import time
 
 import pandas as pd
 import plotly.plotly as pltly
@@ -166,7 +165,6 @@ def execute_backtest(start_dt, end_dt, init_cap,
 		return export_data
 
 
-	startall = time.time() 
 	# run backtest
 	perf = zipline.run_algorithm(start=start_date,
 						end=end_date,
@@ -176,8 +174,6 @@ def execute_backtest(start_dt, end_dt, init_cap,
 						data_frequency='minute',
 						bundle=bundle_name,
 						trading_calendar=get_calendar('AOC'))  # AlwaysOpenCalendar
-	endall = time.time()
-	print(endall-startall)  # only for testing
 
 	# replace _asset column name with name of trading pair
 	perf.rename(columns={'_asset':trading_pair}, inplace=True)

@@ -19,7 +19,7 @@ import subprocess, glob, os
 
 
 # Get an instance of a logger
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('django')
 
 # available trading pairs
 assets_list = ['BTCUSDT','ETHBTC','XLMBTC','XRPBTC']
@@ -93,7 +93,7 @@ def ingest(request):
 		bucket = client.get_bucket(GS_CRAWLERDATA_BUCKET_NAME)
 	except:
 		logger.exception('Cannot get crawler data bucket from Google Cloud Storage')
-		return HttpResponse(status=502)  # Bad Gateway
+		return HttpResponse(status=502)  # Bad Gateway  # set to 500 to get notified
 	# get all possible prefixes of files collected between starttime and endtime
 	prefixes = get_prefixes(starttime, end=endtime)
 	for prefix in prefixes:

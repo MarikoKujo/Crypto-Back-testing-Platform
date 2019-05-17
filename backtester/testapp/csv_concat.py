@@ -1,7 +1,13 @@
 import pandas as pd
 import glob, os  # for reading (and moving) csv files
+import logging
+
+
+# Get an instance of a logger
+logger = logging.getLogger('django')
 
 default_symbols = ['BTCUSDT','ETHBTC','XLMBTC','XRPBTC']
+
 
 def concat_new_csvs(csv_path, arranged_path, symbols=default_symbols):
 	"""Price data preparation process.
@@ -28,6 +34,7 @@ def concat_new_csvs(csv_path, arranged_path, symbols=default_symbols):
 		# a file must contain all cols in must_have_cols, otherwise it is a defect
 		# ignore defects for now. maybe log the filenames later
 		if any(col not in part.columns for col in must_have_cols):
+			logger.info('Defect: '+f)
 			continue
 
 		# keep OHLCV columns, date column and symbol column, drop the rest ones
@@ -41,7 +48,6 @@ def concat_new_csvs(csv_path, arranged_path, symbols=default_symbols):
 	for idx,symbol in enumerate(symbols):
 		# concat data for every single asset
 		data = pd.concat(dataset[idx], ignore_index=True)
-		print('concat %s ok' % symbol)
 		
 		# this part is moved from the above cell considering time performance
 		# change column names
@@ -71,9 +77,10 @@ def concat_new_csvs(csv_path, arranged_path, symbols=default_symbols):
 		try:
 			old = pd.read_csv(arranged_path+symbol+'.csv')
 		except:  # FileNotFoundError
+			logger.exception('Cannot read old asset file for '+symbol+', try to save new')
 			data.to_csv(os.path.join(arranged_path,symbol+'.csv'), 
 				index=False, float_format='%.10f')
-			print('asset %s ok' % symbol)
+			logger.info('Asset '+symbol+' ok')
 			continue
 
 		old['date'] = pd.to_datetime(old['date'])
@@ -84,4 +91,4 @@ def concat_new_csvs(csv_path, arranged_path, symbols=default_symbols):
 		old = pd.concat([old,data], ignore_index=True)
 		old.to_csv(os.path.join(arranged_path,symbol+'.csv'), 
 					index=False, float_format='%.10f')
-		print('asset %s ok' % symbol)
+		logger.info('Asset '+symbol+' ok')

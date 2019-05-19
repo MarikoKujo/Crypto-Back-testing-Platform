@@ -210,6 +210,8 @@ def compare(results, filename_list):
 	cols_sequence = ['total_returns','mean_daily_returns','gross_returns',
 				'number_of_trades','volatility','sharpe_ratio']
 	comp = comp[cols_sequence]
+	comp.columns = ['total returns','mean daily returns','gross returns',
+				'number of trades','volatility','sharpe ratio']
 
 	# comp = comp.style.apply(max_yellow)
 	return comp

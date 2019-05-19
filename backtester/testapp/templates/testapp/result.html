@@ -2,23 +2,24 @@
 {% load static %}
 <html lang="en">
 <head>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta charset="utf-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1"/>
 	<title>Back-testing Environment</title>
-	<link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
-	<link rel="stylesheet" href="{% static "testapp/css/style.css" %}">
-    <link rel="stylesheet" href="{% static "testapp/css/dfstyle.css" %}">
-	<script src="{% static "testapp/js/jquery-1.12.4.js" %}"></script>
-	<script src="{% static "testapp/js/jquery-ui.js" %}"></script>
+	<link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css"/>
+	<link rel="stylesheet" href="{% static 'testapp/css/style.css' %}"/>
+    <link rel="stylesheet" href="{% static 'testapp/css/dfstyle.css' %}"/>
+    <link rel="icon" type="image/png" href="{% static 'testapp/favicon.png' %}"/>
+	<script src="{% static 'testapp/js/jquery-1.12.4.js' %}"></script>
+	<script src="{% static 'testapp/js/jquery-ui.js' %}"></script>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-    <script src="{% static "testapp/js/result.js" %}"></script>
+    <script src="{% static 'testapp/js/result.js' %}"></script>
 </head>
 <body>
-	<input type="text" id="from" style="width:100px;" class="text ui-widget-content ui-corner-all" placeholder="{{ start_date }}" readonly>
+	<input type="text" id="from" style="width:100px;" class="text ui-widget-content ui-corner-all" placeholder="{{ start_date }}" readonly />
 	<label for="to">to</label>
-	<input type="text" id="to" style="width:100px;" class="text ui-widget-content ui-corner-all" placeholder="{{ end_date }}" readonly>
+	<input type="text" id="to" style="width:100px;" class="text ui-widget-content ui-corner-all" placeholder="{{ end_date }}" readonly />
 	<label for="capital">&nbsp; capital base</label>
-	<input type="text" id="capital" style="width:100px;" class="text ui-widget-content ui-corner-all" placeholder="{{ init_capital }}" readonly>
+	<input type="text" id="capital" style="width:100px;" class="text ui-widget-content ui-corner-all" placeholder="{{ init_capital }}" readonly />
 	<label for="tradingpair">&nbsp; trading pair</label>
 	<select id="tradingpair" class="text ui-widget-content ui-corner-all" disabled>
 	    <option value="{{ trading_pair }}"> {{ trading_pair }} </option>

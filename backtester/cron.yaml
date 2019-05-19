@@ -2,3 +2,5 @@ cron:
 - description: "daily data collection, cleaning of old and ingestion of new"
   url: /testapp/ingest/
   schedule: every day 00:30
+  retry_parameters:
+    min_backoff_seconds: 50

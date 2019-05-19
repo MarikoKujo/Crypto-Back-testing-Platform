@@ -2,20 +2,21 @@
 {% load static %}
 <html lang="en">
 <head>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta charset="utf-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1"/>
 	<title>Back-testing Environment</title>
-	<link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
-	<link rel="stylesheet" href="{% static "testapp/css/style.css" %}">
-	<script src="{% static "testapp/js/jquery-1.12.4.js" %}"></script>
-    <script src="{% static "testapp/js/jquery-ui.js" %}"></script>
+	<link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css"/>
+	<link rel="stylesheet" href="{% static 'testapp/css/style.css' %}"/>
+    <link rel="icon" type="image/png" href="{% static 'testapp/favicon.png' %}"/>
+	<script src="{% static 'testapp/js/jquery-1.12.4.js' %}"></script>
+    <script src="{% static 'testapp/js/jquery-ui.js' %}"></script>
     <script type="text/javascript">
     // set max dates for datepickers
     var ingest_date_max_From = "{{ max_from }}";
     var ingest_date_max_To = "{{ max_to }}";
     </script>
-    <script src="{% static "testapp/js/setparam.js" %}"></script>
-    <script src="{% static "testapp/js/jquery.blockUI.js" %}"></script>
+    <script src="{% static 'testapp/js/setparam.js' %}"></script>
+    <script src="{% static 'testapp/js/jquery.blockUI.js' %}"></script>
     <script type="text/javascript">
     // the loading spinner for running backtests
     $(document).on("submit", "form#backtestparams", function() {
@@ -57,11 +58,11 @@
             <fieldset>
                 <label>Trading costs:</label><br>
                 <input type="radio" name="costmethod" id="pershare" value="pershare" checked="checked" /> Percentage of trading volume<br>
-                <input type="radio" name="costmethod" id="pertrade" value="pertrade"> Fixed cost per trade
+                <input type="radio" name="costmethod" id="pertrade" value="pertrade" /> Fixed cost per trade
                 <p>
-                <input type="text" name="commission" id="commission" style="width:80px;" value="0.1" class="text ui-widget-content ui-corner-all">
+                <input type="text" name="commission" id="commission" style="width:80px;" value="0.1" class="text ui-widget-content ui-corner-all" />
                 <label for="commission" id="percentmark">%</label></p>
-                <input type="submit" tabindex="-1" style="position:absolute; top:-1000px">
+                <input type="submit" tabindex="-1" style="position:absolute; top:-1000px"/>
             </fieldset>
         </form>
     </div>

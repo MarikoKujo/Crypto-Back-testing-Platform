@@ -4,11 +4,18 @@ import datetime
 def get_prefixes(start, end=None):
 	"""Generate prefixes for searching files in idp_crypto bucket.
 	A filename uses a UNIX timestamp as prefix. Thus we are able to 
-	list files created in a certain period of time.
+	list files created during a day.
 	Normally start time is 00:20:00 of last day, and end time is 
 	00:20:00 of current day, given that collection of yesterday's 
 	data should be finished then. 
 
+	IMPORTANT: This method relies on the current format of filename.
+	i.e., using UNIX timestamp as prefix for every file. As GCS does 
+	not support directly listing all files added in a certain period 
+	of time, this function is used as a workaround.
+	If filename scheme changes, this method may become invalid.
+	If GCS adds API for listing files according to time, this method
+	should be replaced with directly accessing the API.
 	----------------------------------
 	Examples:
 

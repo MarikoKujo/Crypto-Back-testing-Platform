@@ -63,7 +63,7 @@ def index(request):
 
 
 def ingest(request):
-	"""Run as a cron job at 00:30 every day.
+	"""Run as a cron job at 00:35 every day.
 	Set cron jobs in cron.yaml file.
 	See:
 	cloud.google.com/appengine/docs/flexible/python/scheduling-jobs-with-cron-yaml
@@ -81,8 +81,7 @@ def ingest(request):
 		starttime = (datetime.utcnow().date()-timedelta(days=1)).strftime('%Y-%m-%d')
 		starttime = starttime+' 00:20:00'
 	
-	# # time of now, UTC
-	# endtime = "2018-11-14 00:20:00"
+	# time of now, UTC
 	endtime = datetime.utcnow().date().strftime('%Y-%m-%d')+' 00:20:00'
 
 	logger.info('Attempt to ingest data from '+starttime+' to '+endtime)
@@ -127,7 +126,7 @@ def ingest(request):
 	bname = 'csvdir'
 	utc_today = datetime.utcnow().date().strftime('%Y-%m-%d')
 	# for testing
-	clean_cmd = ['zipline','clean','-b',bname,'--after','2019-05-12']
+	clean_cmd = ['zipline','clean','-b',bname,'--after','2019-05-18']
 	# clean_cmd = ['zipline','clean','-b',bname,'--before',utc_today]
 	ingest_cmd = ['zipline','ingest','-b',bname]
 

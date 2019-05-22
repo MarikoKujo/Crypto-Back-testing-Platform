@@ -1,12 +1,15 @@
 import pandas as pd
 import glob, os  # for reading (and moving) csv files
 import logging
+from google.cloud import storage
 
 
 # Get an instance of a logger
 logger = logging.getLogger('django')
 
 default_symbols = ['BTCUSDT','ETHBTC','XLMBTC','XRPBTC']
+
+GS_ASSETS_BUCKET_NAME = 'idp_backtest_assets'
 
 
 def concat_new_csvs(csv_path, arranged_path, symbols=default_symbols):
@@ -24,6 +27,9 @@ def concat_new_csvs(csv_path, arranged_path, symbols=default_symbols):
 	dataset = [[] for symbol in symbols]  # init an empty list
 	must_have_cols = ['symbol','eventTime','openPrice',
 					'highPrice','lowPrice','price','volume']
+
+	if not os.path.exists(arranged_path):
+		os.makedirs(arranged_path)
 	
 	os.chdir(csv_path)
 
@@ -42,6 +48,10 @@ def concat_new_csvs(csv_path, arranged_path, symbols=default_symbols):
 		# seperate dataset according to assets, drop symbol column
 		for idx,sym in enumerate(symbols):
 			dataset[idx].append((part[part.symbol==sym]).drop(columns=['symbol']))
+
+	# get GCS bucket for asset files
+	client = storage.Client()
+	bucket = client.get_bucket(GS_ASSETS_BUCKET_NAME)
 
 	# for every asset: change column names, deal with (possibly) wrong timestamps, 
 	# and concat to old asset file
@@ -77,11 +87,18 @@ def concat_new_csvs(csv_path, arranged_path, symbols=default_symbols):
 		try:
 			old = pd.read_csv(arranged_path+symbol+'.csv')
 		except:  # FileNotFoundError
-			logger.exception('Cannot read old asset file for '+symbol+', try to save new')
-			data.to_csv(os.path.join(arranged_path,symbol+'.csv'), 
-				index=False, float_format='%.10f')
-			logger.info('Asset '+symbol+' ok')
-			continue
+			try:
+				# retrieve old file from GCS bucket
+				fblob = bucket.get_blob(symbol+'.csv')
+				fblob.download_to_filename(arranged_path+symbol+'.csv')
+
+				old = pd.read_csv(arranged_path+symbol+'.csv')
+			except:
+				logger.exception('Cannot read old asset file for '+symbol+', try to save new')
+				data.to_csv(os.path.join(arranged_path,symbol+'.csv'), 
+					index=False, float_format='%.10f')
+				logger.info('Asset '+symbol+' ok')
+				continue
 
 		old['date'] = pd.to_datetime(old['date'])
 		# drop the last rows if timestamps are not continuous
@@ -91,4 +108,10 @@ def concat_new_csvs(csv_path, arranged_path, symbols=default_symbols):
 		old = pd.concat([old,data], ignore_index=True)
 		old.to_csv(os.path.join(arranged_path,symbol+'.csv'), 
 					index=False, float_format='%.10f')
+
+		# rewrite new asset file to GCS bucket
+		fblob = bucket.blob(symbol+'.csv')
+		fblob.upload_from_filename(arranged_path+symbol+'.csv', 
+									content_type='text/csv')
+
 		logger.info('Asset '+symbol+' ok')

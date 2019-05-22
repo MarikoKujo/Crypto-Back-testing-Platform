@@ -25,7 +25,7 @@ SECRET_KEY = '(h!+n#455*u^64o_ff-9qg#17tcbym*e_9!22!&eq%csdisr#_'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['backtester-dot-cryptos-211011.appspot.com','localhost']
 
 
 # Application definition
@@ -135,7 +135,7 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 5242880
 
 
 # Logging configuration
-# Writes all logging of level 'INFO' 'WARNING' 'ERROR' 'CRITICAL' to a log file
+# Writes all logging of level 'WARNING' 'ERROR' 'CRITICAL' to a log file
 # https://docs.djangoproject.com/en/1.11/topics/logging/
 # https://docs.djangoproject.com/en/1.11/topics/logging/#django-logger
 # https://docs.djangoproject.com/en/1.11/ref/settings/#std:setting-LOGGING
@@ -153,7 +153,7 @@ LOGGING = {
     },
     'handlers': {
         'file': {
-            'level': 'INFO',
+            'level': 'WARNING',
             'class': 'logging.FileHandler',
             'filename': os.path.join(BASE_DIR, 'debug.log'),
             'formatter':'verbose',

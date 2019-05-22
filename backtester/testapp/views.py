@@ -28,8 +28,9 @@ assets_list = ['BTCUSDT','ETHBTC','XLMBTC','XRPBTC']
 df_class = 'dfstyle'
 
 # for using Google Cloud Storage
-GS_RESULTS_BUCKET_NAME = 'idp_backtest_results'
 GS_CRAWLERDATA_BUCKET_NAME = 'idp_crypto'
+GS_RESULTS_BUCKET_NAME = 'idp_backtest_results'
+GS_ASSETS_BUCKET_NAME = 'idp_backtest_assets'
 
 # for saving *aggregates.csv
 aggr_path = djangoSettings.MEDIA_ROOT
@@ -41,6 +42,10 @@ record_file = aggr_path+'last_ingest.txt'
 # Create your views here.
 def index(request):
 	"""Index page of backtester."""
+
+	if not os.path.exists(aggr_path):
+		os.makedirs(aggr_path)
+
 	# read the latest date with complete ingestion from file
 	try:
 		with open(record_file,'r') as record:
@@ -48,9 +53,21 @@ def index(request):
 		max_to = max_to[:len('2019-05-01')]
 		max_to = datetime.strptime(max_to, '%Y-%m-%d')-timedelta(days=1)
 	except:
-		logger.exception('Cannot read last ingest or convert to datetime')
-		# set max_to as yesterday
-		max_to = datetime.utcnow().date()-timedelta(days=1)
+		try:
+			# retrieve latest ingest date from GCS
+			client = storage.Client()
+			bucket = client.get_bucket(GS_ASSETS_BUCKET_NAME)
+			fblob = bucket.get_blob('last_ingest.txt')
+			fblob.download_to_filename(record_file)
+
+			with open(record_file,'r') as record:
+				max_to = record.read()
+			max_to = max_to[:len('2019-05-01')]
+			max_to = datetime.strptime(max_to, '%Y-%m-%d')-timedelta(days=1)
+		except:
+			logger.exception('Cannot read last ingest or convert to datetime')
+			# set max_to as yesterday
+			max_to = datetime.utcnow().date()-timedelta(days=1)
 	
 	# max_from should be one day earlier than max_to
 	max_from = max_to-timedelta(days=1)
@@ -68,6 +85,10 @@ def ingest(request):
 	See:
 	cloud.google.com/appengine/docs/flexible/python/scheduling-jobs-with-cron-yaml
 	"""
+	
+	if not os.path.exists(aggr_path):
+		os.makedirs(aggr_path)
+
 	try:
 		# read start time from file
 		with open(record_file,'r') as record:
@@ -76,10 +97,23 @@ def ingest(request):
 		# remove possible line break char
 		starttime = starttime[:len('2019-05-01 00:20:00')]
 	except:
-		logger.exception('Cannot read last ingest time from file correctly')
-		# set start time as yesterday, 00:20:00
-		starttime = (datetime.utcnow().date()-timedelta(days=1)).strftime('%Y-%m-%d')
-		starttime = starttime+' 00:20:00'
+		# retrieve latest ingest date from GCS
+		try:
+			client = storage.Client()
+			bucket = client.get_bucket(GS_ASSETS_BUCKET_NAME)
+			fblob = bucket.get_blob('last_ingest.txt')
+			fblob.download_to_filename(record_file)
+
+			with open(record_file,'r') as record:
+				# time of last ingestion, UTC
+				starttime = record.read()
+			# remove possible line break char
+			starttime = starttime[:len('2019-05-01 00:20:00')]
+		except:
+			logger.exception('Cannot read last ingest time from file correctly')
+			# set start time as yesterday, 00:20:00
+			starttime = (datetime.utcnow().date()-timedelta(days=1)).strftime('%Y-%m-%d')
+			starttime = starttime+' 00:20:00'
 	
 	# time of now, UTC
 	endtime = datetime.utcnow().date().strftime('%Y-%m-%d')+' 00:20:00'
@@ -110,6 +144,8 @@ def ingest(request):
 	cwd = os.getcwd()
 	# path of old asset price files
 	arranged_path = os.path.join(aggr_path, 'arranged/minute/')
+	if not os.path.exists(arranged_path):
+		os.makedirs(arranged_path)
 	# path for data ingestion
 	ingest_path = os.path.join(aggr_path, 'arranged/')
 	
@@ -155,6 +191,16 @@ def ingest(request):
 		logger.info('Writing last ingest time to file completed')
 	except:
 		logger.exception('Cannot write last ingest time to file')
+
+	try:
+		# rewrite new ingest time to GCS
+		client = storage.Client()
+		bucket = client.get_bucket(GS_ASSETS_BUCKET_NAME)
+		fblob = bucket.blob('last_ingest.txt')
+		fblob.upload_from_filename(record_file)
+	except:
+		logger.exception('Cannot upload last ingest to GCS')
+
 
 	# delete downloaded *aggregates.csv files
 	os.chdir(aggr_path)

@@ -35,7 +35,8 @@ GS_ASSETS_BUCKET_NAME = 'idp_backtest_assets'
 # for saving *aggregates.csv
 aggr_path = djangoSettings.MEDIA_ROOT
 # record file of ingest time
-record_file = aggr_path+'last_ingest.txt'
+record_name = 'last_ingest.txt'
+record_file = aggr_path+record_name
 
 
 
@@ -57,7 +58,7 @@ def index(request):
 			# retrieve latest ingest date from GCS
 			client = storage.Client()
 			bucket = client.get_bucket(GS_ASSETS_BUCKET_NAME)
-			fblob = bucket.get_blob('last_ingest.txt')
+			fblob = bucket.get_blob(record_name)
 			fblob.download_to_filename(record_file)
 
 			with open(record_file,'r') as record:
@@ -75,6 +76,11 @@ def index(request):
 	context = {'assets': assets_list, 
 				'max_to': max_to.strftime('%Y-%m-%d'),
 				'max_from': max_from.strftime('%Y-%m-%d')}
+
+	if 'error_message' in request.session:
+		context['error_message'] = request.session['error_message']
+		del request.session['error_message']
+
 	# return HttpResponse(loader.get_template('testapp/index.html').render(context, request))
 	return render(request, 'testapp/index.html', context)
 
@@ -101,7 +107,7 @@ def ingest(request):
 		try:
 			client = storage.Client()
 			bucket = client.get_bucket(GS_ASSETS_BUCKET_NAME)
-			fblob = bucket.get_blob('last_ingest.txt')
+			fblob = bucket.get_blob(record_name)
 			fblob.download_to_filename(record_file)
 
 			with open(record_file,'r') as record:
@@ -166,6 +172,10 @@ def ingest(request):
 	# clean_cmd = ['zipline','clean','-b',bname,'--before',utc_today]
 	ingest_cmd = ['zipline','ingest','-b',bname]
 
+	# # not a good habit to hardcode database path :(
+	# if not os.path.exists('/root/.zipline/data/csvdir/'):
+	# 	os.makedirs('/root/.zipline/data/csvdir/')
+
 	# clean old ingestion
 	out = subprocess.Popen(clean_cmd, 
 			stdout=subprocess.PIPE,
@@ -196,7 +206,7 @@ def ingest(request):
 		# rewrite new ingest time to GCS
 		client = storage.Client()
 		bucket = client.get_bucket(GS_ASSETS_BUCKET_NAME)
-		fblob = bucket.blob('last_ingest.txt')
+		fblob = bucket.blob(record_name)
 		fblob.upload_from_filename(record_file)
 	except:
 		logger.exception('Cannot upload last ingest to GCS')
@@ -290,12 +300,12 @@ def processing(request):
 				return HttpResponseRedirect(reverse('testapp:index'))
 			except:  # cannot convert csv file to dict correctly
 				error_message = 'Invalid csv: ' + afile.name
-				context = {'assets': assets_list, 'error_message': error_message}
-				return render(request, 'testapp/index.html', context)
+				request.session['error_message'] = error_message
+				return HttpResponseRedirect(reverse('testapp:index'))
 		else:  # for now refuse file > 5 MB
 			error_message = "Single file should not be larger than 5 MB"
-			context = {'assets': assets_list, 'error_message': error_message}
-			return render(request, 'testapp/index.html', context)
+			request.session['error_message'] = error_message
+			return HttpResponseRedirect(reverse('testapp:index'))
 		# else: 
 		#	deal with file larger than 5M here, maybe need to write to disk in chunks
 		#	try to readline and feed into StringIO using loop? avoid disk manipulation
@@ -330,10 +340,10 @@ def processing(request):
 			perf = execute_backtest(start_date, end_date, init_capital, trading_pair, 
 								commission_method, commission_cost, trade)
 		except:
-			error_message = "Cannot complete backtest for strategy {0}".format(idx)
+			error_message = "Cannot complete backtest for strategy {0}".format(idx+1)
 			logger.exception(error_message)
-			context = {'assets': assets_list, 'error_message': error_message}
-			return render(request, 'testapp/index.html', context)
+			request.session['error_message'] = error_message
+			return HttpResponseRedirect(reverse('testapp:index'))
 
 		# render export_data dataframe to json string to store in session
 		# this string can be rendered back to original dataframe for downloading purpose

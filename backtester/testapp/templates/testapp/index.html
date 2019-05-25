@@ -52,6 +52,18 @@
 
     <hr>
 
+    <div style="font-size:small">
+        <p>A trading strategy file should have two fields in each row, trading timestamp and quantity(buy+/sell-), seperated by a single comma.<br>Each row represents a trading signal.</p>
+        <p>For example,</p>
+        <p> 2019-05-03 09:26:00, -42<br>
+            2019-05-04 13:32:00, 37.50<br>
+            2019-05-09 03:42:00, 102<br>
+            2019-05-07 15:52:00, -146.35<br>
+            ... ...</p>
+        <p>The trading timestamps need not to be in order, however duplicates should be avoided.<br>In case there exists two or more rows with same timestamps in a single file, only one of them will be executed.</p>
+        <p>Trading signals with timestamps out of the range of trading period set by user will not be executed. </p>
+    </div>
+
     <div id="dialog-form" title="Settings">
         <p class="validateTips"> </p>
         <form>

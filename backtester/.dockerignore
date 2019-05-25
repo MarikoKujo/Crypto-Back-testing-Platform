@@ -16,4 +16,5 @@
 Dockerfile
 .git
 .hg
+last_ingest.txt
 .svn

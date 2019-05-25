@@ -1,13 +1,13 @@
-import zipline
-from zipline.api import symbol, order, record, get_datetime, set_commission, commission
-from trading_calendars import get_calendar
-
+import gc
 from datetime import datetime
 
 import pandas as pd
 import plotly.plotly as pltly
 import plotly.graph_objs as go
 import plotly.offline
+import zipline
+from trading_calendars import get_calendar
+from zipline.api import symbol, order, record, get_datetime, set_commission, commission
 
 
 timezone = 'UTC'
@@ -25,10 +25,12 @@ def execute_backtest(start_dt, end_dt, init_cap,
 	trading_pair : string, one of the pre-set trading pairs
 	commission_method : string, pershare or pertrade
 	commission_c : string, numeric value for setting commission
-	trades : dict {pd.Timestamp : float}, trading signals including timestamps and corresponding trading amount
+	trades : dict {pd.Timestamp : float}, trading signals including timestamps 
+			and corresponding trading amount
 
 	Returns:
-	perf : pd.DataFrame, the overall results of a backtest, only used as param for nested functions
+	perf : pd.DataFrame, the overall results of a backtest, only used as param 
+			for nested functions
 	[res_overview, graph_div, daily_details, export_data] : list
 	"""
 
@@ -81,7 +83,8 @@ def execute_backtest(start_dt, end_dt, init_cap,
 		results : dict
 		"""
 		if commission_is_per_share:
-			transaction_cost = sum([abs(t['amount'])*commission_cost for tlist in perf['transactions'] for t in tlist])
+			transaction_cost = sum([abs(t['amount'])*commission_cost 
+								for tlist in perf['transactions'] for t in tlist])
 			gross_ret = (perf['portfolio_value'][-1]+transaction_cost-init_capital)/init_capital
 		else:
 			# comm per trade
@@ -110,7 +113,8 @@ def execute_backtest(start_dt, end_dt, init_cap,
 					<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 		"""
 		asset = go.Scatter(x=perf.index, y=perf[trading_pair], name='Underlying')
-		returns = go.Scatter(x=perf.index, y=perf['algorithm_period_return'], name='Cumulative trading return', yaxis='y2')
+		returns = go.Scatter(x=perf.index, y=perf['algorithm_period_return'], 
+							name='Cumulative trading return', yaxis='y2')
 		data = [asset, returns]
 		layout = go.Layout(
 			yaxis=dict(title=trading_pair),
@@ -137,16 +141,21 @@ def execute_backtest(start_dt, end_dt, init_cap,
 		outperf : pd.DataFrame, the daily details of a backtest's results
 		"""
 		# select rows for printing
-		outperf = perf[[trading_pair,'algorithm_period_return','returns','portfolio_value','algo_volatility','sharpe']]
+		outperf = perf[[trading_pair,'algorithm_period_return','returns',
+						'portfolio_value','algo_volatility','sharpe']]
 		# percentages: store as decimals, display as percentages in UI (possibly)
-		outperf.columns = [trading_pair,'total returns','daily returns','portfolio value','volatility','sharpe ratio']
+		outperf.columns = [trading_pair,'total returns','daily returns',
+						'portfolio value','volatility','sharpe ratio']
 		# convert datetime to date
 		outperf.index = outperf.index.date
 		return outperf
 
 	def export_csv(outperf, perf):
 		"""Export to file section.
-		The exported dataframe contains date index, asset price, total returns, trading signals.
+		The exported dataframe contains date index, asset price, total returns, 
+		trading signals.
+		Note that this function only returns a dataframe which will be rendered 
+		to csv file later, NOT a csv file.
 
 		Parameters:
 		outperf : pd.DataFrame, the DataFrame in daily details section
@@ -160,7 +169,8 @@ def execute_backtest(start_dt, end_dt, init_cap,
 		tradeset = []
 		for d in outperf.index:
 			# appending daily trading signals (timestamps are converted to strings)
-			tradeset.append([(t.strftime("%Y-%m-%d %H:%M:%S"),a) for t,a in trades.items() if pd.to_datetime(t).date() == d])
+			tradeset.append([(t.strftime("%Y-%m-%d %H:%M:%S"),a) for t,a in trades.items() 
+							if pd.to_datetime(t).date() == d])
 		export_data.insert(loc=2, column='trading data', value=tradeset)
 		return export_data
 
@@ -175,6 +185,8 @@ def execute_backtest(start_dt, end_dt, init_cap,
 						bundle=bundle_name,
 						trading_calendar=get_calendar('AOC'))  # AlwaysOpenCalendar
 
+	gc.collect()
+
 	# replace _asset column name with name of trading pair
 	perf.rename(columns={'_asset':trading_pair}, inplace=True)
 
@@ -184,6 +196,7 @@ def execute_backtest(start_dt, end_dt, init_cap,
 	daily_details = get_daily_details(perf)  # pd.DataFrame
 	export_data = export_csv(daily_details, perf)  #pd.DataFrame
 
+	gc.collect()
 	
 	return [res_overview, graph_div, daily_details, export_data]
 

@@ -1,21 +1,26 @@
+"""Views of backtester app, including views for GAE cron jobs.
+"""
+import csv
+import gc
+import glob
+import json
+import logging
+import os
+from datetime import datetime, timedelta
+from io import StringIO
+
+import pandas as pd
 from django.conf import settings as djangoSettings
 from django.shortcuts import render
 from django.http import HttpResponse, HttpResponseRedirect
-from django.template import loader
 from django.urls import reverse
-import logging
-
-from io import StringIO
-from .execute_backtest import execute_backtest, compare
-from .get_prefixes import get_prefixes
-from .csv_concat import concat_new_csvs
-from datetime import datetime, timedelta
 from google.cloud import storage
 
-import csv
-import pandas as pd
-import json
-import subprocess, glob, os
+from .csv_concat import concat_new_csvs
+from .execute_backtest import execute_backtest, compare
+from .get_prefixes import get_prefixes
+from .zipline_commands import *
+
 
 
 # Get an instance of a logger
@@ -81,19 +86,33 @@ def index(request):
 		context['error_message'] = request.session['error_message']
 		del request.session['error_message']
 
+	# from django.template import loader
 	# return HttpResponse(loader.get_template('testapp/index.html').render(context, request))
 	return render(request, 'testapp/index.html', context)
 
 
 def ingest(request):
-	"""Run as a cron job at 00:35 every day.
-	Set cron jobs in cron.yaml file.
+	"""Data (collection and) ingestion. Run as a cron job at 00:35 every day.
+	Set and deploy cron jobs using cron.yaml file.
 	See:
 	cloud.google.com/appengine/docs/flexible/python/scheduling-jobs-with-cron-yaml
+	console.cloud.google.com/appengine/cronjobs
 	"""
 	
+	# path for saving *aggregates.csv
 	if not os.path.exists(aggr_path):
 		os.makedirs(aggr_path)
+	# path of old asset price files
+	arranged_path = os.path.join(aggr_path, 'arranged/minute/')
+	if not os.path.exists(arranged_path):
+		os.makedirs(arranged_path)
+	# path for data ingestion
+	ingest_path = os.path.join(aggr_path, 'arranged/')
+	# data bundle name. In case change, also change bundle_name in execute_backtest.py
+	bname = 'csvdir'
+
+	# client for GCS
+	client = storage.Client()
 
 	try:
 		# read start time from file
@@ -105,7 +124,6 @@ def ingest(request):
 	except:
 		# retrieve latest ingest date from GCS
 		try:
-			client = storage.Client()
 			bucket = client.get_bucket(GS_ASSETS_BUCKET_NAME)
 			fblob = bucket.get_blob(record_name)
 			fblob.download_to_filename(record_file)
@@ -122,12 +140,36 @@ def ingest(request):
 			starttime = starttime+' 00:20:00'
 	
 	# time of now, UTC
-	endtime = datetime.utcnow().date().strftime('%Y-%m-%d')+' 00:20:00'
+	starttimestamp = datetime.strptime(starttime, '%Y-%m-%d %H:%M:%S')
+	endtimestamp = datetime.utcnow()
+	endtime = endtimestamp.date().strftime('%Y-%m-%d')+' 00:20:00'
 
+	# cron job manually triggered by user: retrieve data and ingest
+	if endtimestamp - starttimestamp < timedelta(days=1):
+		# check if there is ingestion, if yes, return
+		if check_not_empty(bname):
+			return HttpResponse('Ingestions already up to date')
+
+		# if no, check if there are asset files, if no, download them
+		download_list = [asset for asset in assets_list 
+						if not os.path.isfile(arranged_path+asset+'.csv')]
+		bucket = client.get_bucket(GS_ASSETS_BUCKET_NAME)
+		for symbol in download_list:
+			fblob = bucket.get_blob(symbol+'.csv')
+			fblob.download_to_filename(arranged_path+symbol+'.csv')
+		# do the ingestion, return
+		stdout,stderr = run_ingest(ingest_path, bname)
+		logger.info(stdout)
+		if (stderr is not None) and (stderr != ""):
+			logger.error(stderr)
+			return HttpResponse(status=500)  # Internal Server Error, cannot ingest
+		else:
+			return HttpResponse('Retrieved data from GCS and ingested.')
+
+	# else: get new data and ingest
 	logger.info('Attempt to ingest data from '+starttime+' to '+endtime)
 
 	try:
-		client = storage.Client()
 		# set bucket to crawler data bucket
 		bucket = client.get_bucket(GS_CRAWLERDATA_BUCKET_NAME)
 	except:
@@ -148,12 +190,6 @@ def ingest(request):
 
 	# current working directory
 	cwd = os.getcwd()
-	# path of old asset price files
-	arranged_path = os.path.join(aggr_path, 'arranged/minute/')
-	if not os.path.exists(arranged_path):
-		os.makedirs(arranged_path)
-	# path for data ingestion
-	ingest_path = os.path.join(aggr_path, 'arranged/')
 	
 	# data preparation
 	concat_new_csvs(aggr_path, arranged_path, symbols=assets_list)
@@ -162,37 +198,19 @@ def ingest(request):
 	os.chdir(cwd)
 
 	# clean old data and ingest new data
-	my_env = os.environ.copy()
-	my_env["CSVDIR"] = ingest_path
-	# data bundle name. In case change, also change bundle_name in execute_backtest.py
-	bname = 'csvdir'
-	utc_today = datetime.utcnow().date().strftime('%Y-%m-%d')
+	# utc_today = datetime.utcnow().date().strftime('%Y-%m-%d')
 	# for testing
-	clean_cmd = ['zipline','clean','-b',bname,'--after','2019-05-18']
 	# clean_cmd = ['zipline','clean','-b',bname,'--before',utc_today]
-	ingest_cmd = ['zipline','ingest','-b',bname]
-
-	# # not a good habit to hardcode database path :(
-	# if not os.path.exists('/root/.zipline/data/csvdir/'):
-	# 	os.makedirs('/root/.zipline/data/csvdir/')
-
-	# clean old ingestion
-	out = subprocess.Popen(clean_cmd, 
-			stdout=subprocess.PIPE,
-			stderr=subprocess.PIPE)
-	_, stderr = out.communicate()
+	
+	_, stderr = run_clean(bname, 'after', '2019-05-20')
 	if (stderr is not None) and (stderr != ""):
 		logger.warning(stderr)
-	# do new ingestion
-	out = subprocess.Popen(ingest_cmd,
-			env=my_env,
-			stdout=subprocess.PIPE,
-			stderr=subprocess.PIPE)
-	stdout,stderr = out.communicate()
+	
+	stdout,stderr = run_ingest(ingest_path, bname)
 	logger.info(stdout)
 	if (stderr is not None) and (stderr != ""):
 		logger.error(stderr)
-		# return HttpResponse(status=500)  # Internal Server Error
+		return HttpResponse(status=500)  # Internal Server Error, cannot ingest
 
 	try:
 		with open(record_file,'w') as record:
@@ -204,7 +222,6 @@ def ingest(request):
 
 	try:
 		# rewrite new ingest time to GCS
-		client = storage.Client()
 		bucket = client.get_bucket(GS_ASSETS_BUCKET_NAME)
 		fblob = bucket.blob(record_name)
 		fblob.upload_from_filename(record_file)
@@ -223,7 +240,12 @@ def ingest(request):
 
 	os.chdir(cwd)
 
-	logger.info('Ingestion of data from '+starttime+' to '+endtime+' completed')
+	msg = 'Ingestion of data from '+starttime+' to '+endtime+' completed'
+	logger.info(msg)
+	
+	# force the Garbage Collector to release unreferenced memory
+	gc.collect()
+
 	return HttpResponse(msg)
 
 
@@ -373,6 +395,8 @@ def processing(request):
 	request.session['init_capital'] = init_capital
 	request.session['trading_pair'] = trading_pair
 	request.session['filename_list'] = filename_list
+
+	gc.collect()
 
 	# Redirect to results display page
 	return HttpResponseRedirect(reverse('testapp:results'))

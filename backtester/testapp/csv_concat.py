@@ -1,6 +1,7 @@
 import pandas as pd
 import glob, os  # for reading (and moving) csv files
 import logging
+import gc
 from google.cloud import storage
 
 
@@ -115,3 +116,5 @@ def concat_new_csvs(csv_path, arranged_path, symbols=default_symbols):
 									content_type='text/csv')
 
 		logger.info('Asset '+symbol+' ok')
+
+	gc.collect()

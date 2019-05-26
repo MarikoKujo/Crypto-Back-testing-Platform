@@ -3,5 +3,3 @@ cron:
   url: /testapp/ingest/
   schedule: every day 00:35
   target: backtester
-  retry_parameters:
-    min_backoff_seconds: 50

@@ -101,9 +101,8 @@ def concat_new_csvs(csv_path, arranged_path, symbols=default_symbols):
 				logger.info('Asset '+symbol+' ok')
 				continue
 
-		old['date'] = pd.to_datetime(old['date'])
 		# drop the last rows if timestamps are not continuous
-		while old.iloc[-1,0] >= data.iloc[0,0]:
+		while pd.to_datetime(old.iloc[-1,0]) >= data.iloc[0,0]:
 			old = old[:-1]
 		# concat and rewrite
 		old = pd.concat([old,data], ignore_index=True)

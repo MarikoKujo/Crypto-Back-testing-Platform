@@ -210,7 +210,7 @@ def ingest(request):
 	logger.info(stdout)
 	if (stderr is not None) and (stderr != ""):
 		logger.error(stderr)
-		return HttpResponse(status=500)  # Internal Server Error, cannot ingest
+		# return HttpResponse(status=500)  # Internal Server Error, cannot ingest
 
 	try:
 		with open(record_file,'w') as record:

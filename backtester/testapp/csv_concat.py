@@ -1,8 +1,9 @@
-import pandas as pd
-import glob, os  # for reading (and moving) csv files
-import logging
 import gc
+import logging
+import os
+
 from google.cloud import storage
+import pandas as pd
 
 
 # Get an instance of a logger
@@ -13,7 +14,7 @@ default_symbols = ['BTCUSDT','ETHBTC','XLMBTC','XRPBTC']
 GS_ASSETS_BUCKET_NAME = 'idp_backtest_assets'
 
 
-def concat_new_csvs(csv_path, arranged_path, symbols=default_symbols):
+def concat_new_csvs(csv_path, csv_names, arranged_path, symbols=default_symbols):
 	"""Price data preparation process.
 	Clean newly downloaded data and concat to old price files.
 
@@ -35,13 +36,13 @@ def concat_new_csvs(csv_path, arranged_path, symbols=default_symbols):
 	os.chdir(csv_path)
 
 	# sort csv files by asset type and remove unwanted columns
-	for f in glob.glob('*aggregates.csv'):
-		part = pd.read_csv(f)
+	for csv_name in csv_names:
+		part = pd.read_csv(csv_name)
 
 		# a file must contain all cols in must_have_cols, otherwise it is a defect
 		# ignore defects for now. maybe log the filenames later
 		if any(col not in part.columns for col in must_have_cols):
-			logger.info('Defect: '+f)
+			logger.info('Defect: '+csv_name)
 			continue
 
 		# keep OHLCV columns, date column and symbol column, drop the rest ones

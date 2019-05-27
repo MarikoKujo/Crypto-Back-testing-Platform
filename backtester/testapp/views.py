@@ -177,6 +177,7 @@ def ingest(request):
 		return HttpResponse(status=502)  # Bad Gateway  # set to 500 to get notified
 	# get all possible prefixes of files collected between starttime and endtime
 	prefixes = get_prefixes(starttime, end=endtime)
+	aggr_names = []
 	for prefix in prefixes:
 		logger.info(prefix)
 		# look up files in bucket using prefix to speed up searching
@@ -185,6 +186,7 @@ def ingest(request):
 		for fblob in fblobs:
 			if fblob.name.endswith('aggregates.csv'):
 				fblob.download_to_filename(aggr_path+fblob.name)
+				aggr_names.append(fblob.name)
 
 	logger.info('Downloading completed')
 
@@ -192,15 +194,10 @@ def ingest(request):
 	cwd = os.getcwd()
 	
 	# data preparation
-	concat_new_csvs(aggr_path, arranged_path, symbols=assets_list)
+	concat_new_csvs(aggr_path, aggr_names, arranged_path, symbols=assets_list)
 	logger.info('Data preparation completed')
 
 	os.chdir(cwd)
-
-	# clean old data and ingest new data
-	# utc_today = datetime.utcnow().date().strftime('%Y-%m-%d')
-	# for testing
-	# clean_cmd = ['zipline','clean','-b',bname,'--before',utc_today]
 	
 	_, stderr = run_clean(bname, 'after', '2019-05-20')
 	if (stderr is not None) and (stderr != ""):
@@ -214,7 +211,6 @@ def ingest(request):
 
 	try:
 		with open(record_file,'w') as record:
-			# print(utc_today+' 00:20:00', file=record)
 			print(endtime, file=record)
 		logger.info('Writing last ingest time to file completed')
 	except:
@@ -361,6 +357,15 @@ def processing(request):
 			# list : [dict, string(html_div), pd.DataFrame, pd.DataFrame]
 			perf = execute_backtest(start_date, end_date, init_capital, trading_pair, 
 								commission_method, commission_cost, trade)
+		except (FileNotFoundError, ValueError) as e:
+			error_message = "Cannot complete backtest for strategy {0}.".format(idx+1)
+			logger.exception(error_message)
+			suggestion = (" There may be something wrong with data ingestion. "
+					"If you have admin permission, try to run the daily data collection "
+					"cron job from https://console.cloud.google.com/appengine/cronjobs")
+			request.session['error_message'] = error_message + suggestion
+			return HttpResponseRedirect(reverse('testapp:index'))
+
 		except:
 			error_message = "Cannot complete backtest for strategy {0}".format(idx+1)
 			logger.exception(error_message)

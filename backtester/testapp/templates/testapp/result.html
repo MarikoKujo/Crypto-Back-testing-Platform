@@ -37,7 +37,7 @@
 	<div id="tabs">
 		<ul>
 		{% for name in filename_list %}
-			<li><a href="{% cycle '#filetabs-1' '#filetabs-2' '#filetabs-3' %}">{{ name }}</a></li>
+			<li><a href="{% cycle '#filetabs-1' '#filetabs-2' '#filetabs-3' %}">{{ name|escape }}</a></li>
 		{% endfor %}
 		</ul>
 		{% for p in perf %}

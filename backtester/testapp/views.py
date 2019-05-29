@@ -159,12 +159,14 @@ def ingest(request):
 			fblob.download_to_filename(arranged_path+symbol+'.csv')
 		# do the ingestion, return
 		stdout,stderr = run_ingest(ingest_path, bname)
+		stdout = stdout.decode("utf-8")
 		logger.info(stdout)
-		if (stderr is not None) and (stderr != ""):
-			logger.error(stderr)
-			return HttpResponse(status=500)  # Internal Server Error, cannot ingest
-		else:
-			return HttpResponse('Retrieved data from GCS and ingested.')
+		if stderr is not None:
+			stderr = stderr.decode("utf-8")
+			if stderr != "":
+				logger.warning(stderr)
+				# return HttpResponse(status=500)  # Internal Server Error, cannot ingest
+		return HttpResponse('Retrieved data from GCS and ingested.')
 
 	# else: get new data and ingest
 	logger.info('Attempt to ingest data from '+starttime+' to '+endtime)
@@ -200,14 +202,19 @@ def ingest(request):
 	os.chdir(cwd)
 	
 	_, stderr = run_clean(bname, 'after', '2019-05-20')
-	if (stderr is not None) and (stderr != ""):
-		logger.warning(stderr)
+	if stderr is not None:
+		stderr = stderr.decode("utf-8")
+		if stderr != "":
+			logger.warning(stderr)
 	
 	stdout,stderr = run_ingest(ingest_path, bname)
+	stdout = stdout.decode("utf-8")
 	logger.info(stdout)
-	if (stderr is not None) and (stderr != ""):
-		logger.error(stderr)
-		# return HttpResponse(status=500)  # Internal Server Error, cannot ingest
+	if stderr is not None:
+		stderr = stderr.decode("utf-8")
+		if stderr != "":
+			logger.warning(stderr)
+			# return HttpResponse(status=500)  # Internal Server Error, cannot ingest
 
 	try:
 		with open(record_file,'w') as record:

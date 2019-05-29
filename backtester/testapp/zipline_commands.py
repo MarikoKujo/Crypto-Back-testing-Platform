@@ -22,6 +22,7 @@ def check_not_empty(bundle_name):
 		stdout=subprocess.PIPE,
 		stderr=subprocess.PIPE)
 	stdout,_ = out.communicate()
+	stdout = stdout.decode("utf-8")
 	if ((stdout is not None) and (bundle_name in stdout) 
 			and (bundle_name+' <no ingestions>' not in stdout)):
 		return True

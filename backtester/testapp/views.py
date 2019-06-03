@@ -34,8 +34,8 @@ df_class = 'dfstyle'
 
 # for using Google Cloud Storage
 GS_CRAWLERDATA_BUCKET_NAME = 'idp_crypto'
-GS_RESULTS_BUCKET_NAME = 'idp_backtest_results'
 GS_ASSETS_BUCKET_NAME = 'idp_backtest_assets'
+# GS_RESULTS_BUCKET_NAME = 'idp_backtest_results'  # deprecated
 
 # for saving *aggregates.csv
 aggr_path = djangoSettings.MEDIA_ROOT
@@ -254,8 +254,40 @@ def ingest(request):
 
 def export(request):
 	"""Export backtest result to .csv file and store in Google Cloud Storage."""
-	if request.method == 'POST':
+	# Deprecated: export to Google Cloud Storage bucket
+	# ----------------------------------
+	# if request.method == 'POST':
 		
+	# 	# generate file name
+	# 	namestr = request.POST['expname']
+	# 	timestr = datetime.now().strftime("%Y%m%d-%H%M%S")
+	# 	fname = timestr+'_'+namestr+'.csv'
+
+	# 	try:  # get file string for exporting
+	# 		exp_list = request.session['exp_list']
+	# 		expidx = int(request.POST['expidx'])
+	# 		dfs_json = exp_list[expidx]
+	# 		dfs = pd.read_json(dfs_json)
+	# 		fstring = dfs.to_csv(index_label='date')
+	# 	except:
+	# 		logger.exception('Cannot convert to csv file')
+	# 		return HttpResponse('Error: Cannot convert to csv file.')
+
+	# 	try:  # export file to storage bucket
+	# 		client = storage.Client()
+	# 		bucket = client.get_bucket(GS_RESULTS_BUCKET_NAME)
+	# 		fblob = bucket.blob(fname)
+	# 		fblob.upload_from_string(fstring, content_type='text/csv')
+	# 	except:
+	# 		logger.exception('Cannot upload to backtest results bucket')
+	# 		return HttpResponse('Error: Cannot upload to Google Cloud Storage.')
+
+	# 	return HttpResponse(fname+' successfully exported.')
+
+	# # ideally this should not be reached
+	# return HttpResponseRedirect(reverse('testapp:results'))
+	# ----------------------------------
+	if request.method == 'POST':
 		# generate file name
 		namestr = request.POST['expname']
 		timestr = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -271,19 +303,13 @@ def export(request):
 			logger.exception('Cannot convert to csv file')
 			return HttpResponse('Error: Cannot convert to csv file.')
 
-		try:  # export file to storage bucket
-			client = storage.Client()
-			bucket = client.get_bucket(GS_RESULTS_BUCKET_NAME)
-			fblob = bucket.blob(fname)
-			fblob.upload_from_string(fstring, content_type='text/csv')
-		except:
-			logger.exception('Cannot upload to backtest results bucket')
-			return HttpResponse('Error: Cannot upload to Google Cloud Storage.')
-
-		return HttpResponse(fname+' successfully exported.')
+		response = HttpResponse(fstring, content_type='text/csv')
+		response['Content-Disposition'] = 'attachment; filename="'+fname+'"'
+		return response
 
 	# ideally this should not be reached
 	return HttpResponseRedirect(reverse('testapp:results'))
+
 
 
 def results(request):

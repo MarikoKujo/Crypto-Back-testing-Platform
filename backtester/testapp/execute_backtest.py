@@ -166,12 +166,26 @@ def execute_backtest(start_dt, end_dt, init_cap,
 		"""
 		export_data = outperf[[trading_pair,'total returns']]
 		# export_data.insert(loc=2, column='orders', value=perf['orders'].values)
-		tradeset = []
-		for d in outperf.index:
-			# appending daily trading signals (timestamps are converted to strings)
-			tradeset.append([(t.strftime("%Y-%m-%d %H:%M:%S"),a) for t,a in trades.items() 
-							if pd.to_datetime(t).date() == d])
-		export_data.insert(loc=2, column='trading data', value=tradeset)
+
+		orders_set = []
+		for idx,daily_orders in enumerate(perf['orders']):
+			daily_order_dicts = []
+			for order in daily_orders:
+				if order['status'] == 1:  # order is filled
+					tran = next((t for t in perf['transactions'][idx] 
+							if t['order_id'] == order['id']), None)
+					price = tran['price'] if tran is not None else 'not available'
+					# use list of tuples if sequence of keys matters
+					order_dict = {'created' : order['created'].strftime("%Y-%m-%d %H:%M:%S"),
+							'amount' : order['amount'],
+							'filled' : order['dt'].strftime("%Y-%m-%d %H:%M:%S"),
+							'price' : price}
+					daily_order_dicts.append(order_dict)
+
+			orders_set.append(daily_order_dicts)
+
+
+		export_data.insert(loc=2, column='orders', value=orders_set)
 		return export_data
 
 

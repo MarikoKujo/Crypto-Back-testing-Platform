@@ -56,7 +56,7 @@ def index(request):
 	try:
 		with open(record_file,'r') as record:
 			max_to = record.read()
-		max_to = max_to[:len('2019-05-01')]
+		max_to = max_to[:len('YYYY-MM-DD')]
 		max_to = datetime.strptime(max_to, '%Y-%m-%d')-timedelta(days=1)
 	except:
 		try:
@@ -68,7 +68,7 @@ def index(request):
 
 			with open(record_file,'r') as record:
 				max_to = record.read()
-			max_to = max_to[:len('2019-05-01')]
+			max_to = max_to[:len('YYYY-MM-DD')]
 			max_to = datetime.strptime(max_to, '%Y-%m-%d')-timedelta(days=1)
 		except:
 			logger.exception('Cannot read last ingest or convert to datetime')
@@ -92,11 +92,8 @@ def index(request):
 
 
 def ingest(request):
-	"""Data (collection and) ingestion. Run as a cron job at 00:35 every day.
-	Set and deploy cron jobs using cron.yaml file.
-	See:
-	cloud.google.com/appengine/docs/flexible/python/scheduling-jobs-with-cron-yaml
-	console.cloud.google.com/appengine/cronjobs
+	"""Data (collection and) ingestion. 
+	Run by user manually after starting the instance every time.
 	"""
 	
 	# path for saving *aggregates.csv
@@ -120,7 +117,7 @@ def ingest(request):
 			# time of last ingestion, UTC
 			starttime = record.read()
 		# remove possible line break char
-		starttime = starttime[:len('2019-05-01 00:20:00')]
+		starttime = starttime[:len('YYYY-MM-DD HH:MM:SS')]
 	except:
 		# retrieve latest ingest date from GCS
 		try:
@@ -132,7 +129,7 @@ def ingest(request):
 				# time of last ingestion, UTC
 				starttime = record.read()
 			# remove possible line break char
-			starttime = starttime[:len('2019-05-01 00:20:00')]
+			starttime = starttime[:len('YYYY-MM-DD HH:MM:SS')]
 		except:
 			logger.exception('Cannot read last ingest time from file correctly')
 			# set start time as yesterday, 00:20:00
@@ -394,15 +391,18 @@ def processing(request):
 			error_message = "Cannot complete backtest for strategy {0}.".format(idx+1)
 			logger.exception(error_message)
 			suggestion = (" There may be something wrong with data ingestion. "
-					"If you have admin permission, try to run the daily data collection "
-					"cron job from https://console.cloud.google.com/appengine/cronjobs")
+					"Please try to ingest data by visiting "
+					"http://backtester-dot-cryptos-211011.appspot.com/testapp/ingest/")
 			request.session['error_message'] = error_message + suggestion
 			return HttpResponseRedirect(reverse('testapp:index'))
 
 		except:
 			error_message = "Cannot complete backtest for strategy {0}".format(idx+1)
 			logger.exception(error_message)
-			request.session['error_message'] = error_message
+			suggestion = ("Please try to restart the server, and then visit "
+					"http://backtester-dot-cryptos-211011.appspot.com/testapp/ingest/ "
+					"to ingest data manually.")
+			request.session['error_message'] = error_message + suggestion
 			return HttpResponseRedirect(reverse('testapp:index'))
 
 		# render export_data dataframe to json string to store in session

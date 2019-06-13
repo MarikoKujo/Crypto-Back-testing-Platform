@@ -152,6 +152,35 @@ $( function() {
   });
 } );
 
+// Data ingestion button
+$( function() {
+  var ingbutton = $( "#ingest" );
+  var inginfo = $( "#ingestinfo" );
+  ingbutton.button().on( "click", function() {
+    // disable buttons
+    ingbutton.button("option", "disabled", true);
+    $( "#submitparams ").prop("disabled", "true");
+    inginfo.attr("style", "color:black;");
+    inginfo.html("Ingesting data... Please do not close the page");
+
+    url = ingbutton.attr("data-url");
+    // send get request to target url
+    $.get(url, function(data) {
+      // set info label text color
+      if (data.indexOf("Error") !== -1) {  // "Error" in response
+        inginfo.attr("style", "color:red;");
+      } else {
+        inginfo.attr("style", "color:green;");
+      }
+      // set info label content
+      inginfo.html(data);
+      // enable buttons
+      ingbutton.button("option", "disabled", false);
+      $( "#submitparams ").removeAttr('disabled');
+    });
+  });
+});
+
 // Make input file and submit buttons in jQuery button style
 $( function() {
   $( "input[type=submit], input[type=file]" ).button();

@@ -119,7 +119,7 @@ def ingest(request):
 		# remove possible line break char
 		starttime = starttime[:len('YYYY-MM-DD HH:MM:SS')]
 	except:
-		# retrieve latest ingest date from GCS
+		# retrieve latest ingest time from GCS
 		try:
 			bucket = client.get_bucket(GS_ASSETS_BUCKET_NAME)
 			fblob = bucket.get_blob(record_name)
@@ -136,21 +136,26 @@ def ingest(request):
 			starttime = (datetime.utcnow().date()-timedelta(days=1)).strftime('%Y-%m-%d')
 			starttime = starttime+' 00:20:00'
 	
-	# time of now, UTC
+	# get and ingest data from starttime to endtime
 	starttimestamp = datetime.strptime(starttime, '%Y-%m-%d %H:%M:%S')
-	endtimestamp = datetime.utcnow()
+	endtimestamp = datetime.utcnow()  # actual time
 	endtime = endtimestamp.date().strftime('%Y-%m-%d')+' 00:20:00'
 
-	# cron job manually triggered by user: retrieve data and ingest
+	# last ingestion was less than 1 day ago
 	if endtimestamp - starttimestamp < timedelta(days=1):
 		# check if there is ingestion, if yes, return
 		if check_not_empty(bname):
-			return HttpResponse('Ingestions already up to date')
+			return HttpResponse('Data is already up to date')
 
 		# if no, check if there are asset files, if no, download them
 		download_list = [asset for asset in assets_list 
 						if not os.path.isfile(arranged_path+asset+'.csv')]
-		bucket = client.get_bucket(GS_ASSETS_BUCKET_NAME)
+		try:
+			bucket = client.get_bucket(GS_ASSETS_BUCKET_NAME)
+		except:
+			logger.exception('Cannot get assets data bucket from Google Cloud Storage')
+			return HttpResponse('Error: Cannot get pricing data from Cloud Storage bucket '
+						+GS_ASSETS_BUCKET_NAME)
 		for symbol in download_list:
 			fblob = bucket.get_blob(symbol+'.csv')
 			fblob.download_to_filename(arranged_path+symbol+'.csv')
@@ -163,7 +168,8 @@ def ingest(request):
 			if stderr != "":
 				logger.warning(stderr)
 				# return HttpResponse(status=500)  # Internal Server Error, cannot ingest
-		return HttpResponse('Retrieved data from GCS and ingested.')
+				# return HttpResponse('Error: Cannot finish ingestion.')
+		return HttpResponse('Ingestion completed. Please refresh the page.')
 
 	# else: get new data and ingest
 	logger.info('Attempt to ingest data from '+starttime+' to '+endtime)
@@ -173,7 +179,9 @@ def ingest(request):
 		bucket = client.get_bucket(GS_CRAWLERDATA_BUCKET_NAME)
 	except:
 		logger.exception('Cannot get crawler data bucket from Google Cloud Storage')
-		return HttpResponse(status=502)  # Bad Gateway  # set to 500 to get notified
+		# return HttpResponse(status=502)  # Bad Gateway  # set to 500 to get notified
+		return HttpResponse('Error: Cannot get crawler data from Cloud Storage bucket '
+						+GS_CRAWLERDATA_BUCKET_NAME)
 	# get all possible prefixes of files collected between starttime and endtime
 	prefixes = get_prefixes(starttime, end=endtime)
 	aggr_names = []
@@ -198,11 +206,12 @@ def ingest(request):
 
 	os.chdir(cwd)
 	
-	_, stderr = run_clean(bname, 'after', '2019-05-20')
-	if stderr is not None:
-		stderr = stderr.decode("utf-8")
-		if stderr != "":
-			logger.warning(stderr)
+	# # clean old data ingestion
+	# _, stderr = run_clean(bname, 'after', '2019-05-20')
+	# if stderr is not None:
+	# 	stderr = stderr.decode("utf-8")
+	# 	if stderr != "":
+	# 		logger.warning(stderr)
 	
 	stdout,stderr = run_ingest(ingest_path, bname)
 	stdout = stdout.decode("utf-8")
@@ -211,7 +220,7 @@ def ingest(request):
 		stderr = stderr.decode("utf-8")
 		if stderr != "":
 			logger.warning(stderr)
-			# return HttpResponse(status=500)  # Internal Server Error, cannot ingest
+			# return HttpResponse('Error: Cannot finish ingestion.')
 
 	try:
 		with open(record_file,'w') as record:
@@ -246,7 +255,8 @@ def ingest(request):
 	# force the Garbage Collector to release unreferenced memory
 	gc.collect()
 
-	return HttpResponse(msg)
+	return HttpResponse('Ingestion completed. Please refresh the page.')
+
 
 
 def export(request):

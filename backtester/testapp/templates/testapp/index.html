@@ -45,9 +45,12 @@
         <input type="text" style="display:none;" name="comm" id="comm" value="pershare" />
         <input type="text" style="display:none;" name="commamount" id="commamount" value="0.1" />
         <button type="button" id="settings">Settings</button>
+        <button type="button" id="ingest" data-url="{% url 'testapp:ingest' %}">Ingest Data</button>
         <br>
         <label id="infolabel" for="strategies">Select trading strategy files in .csv format:</label>
         <input type="file" id="strategies" name="strategies" accept=".csv" multiple />
+        <br>
+        <label id="ingestinfo"> </label>
     </form>
 
     <hr>

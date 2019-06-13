@@ -1,6 +1,7 @@
 plotly==3.7.0
 pandas==0.22.0
 Django==1.11.10
+gevent==1.3.0
 google-api-core==1.7.0
 google-auth==1.6.3
 google-cloud-core==0.29.1

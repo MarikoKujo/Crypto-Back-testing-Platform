@@ -1,5 +1,0 @@
-cron:
-- description: "daily data collection, cleaning of old and ingestion of new"
-  url: /testapp/ingest/
-  schedule: every day 00:35
-  target: backtester

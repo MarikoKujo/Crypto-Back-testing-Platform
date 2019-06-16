@@ -195,6 +195,7 @@ def ingest(request):
 				fblob.download_to_filename(aggr_path+fblob.name)
 				aggr_names.append(fblob.name)
 
+	logger.info(aggr_names)
 	logger.info('Downloading completed')
 
 	# current working directory

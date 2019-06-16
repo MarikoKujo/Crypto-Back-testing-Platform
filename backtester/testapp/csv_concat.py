@@ -20,6 +20,7 @@ def concat_new_csvs(csv_path, csv_names, arranged_path, symbols=default_symbols)
 
 	Parameters:
 	csv_path : string, path of newly downloaded *-aggregates.csv files
+	csv_names : list, names of newly downloaded *-aggregates.csv files
 	arranged_path : string, path of old asset price files
 	symbols : list, asset symbols
 
@@ -34,10 +35,11 @@ def concat_new_csvs(csv_path, csv_names, arranged_path, symbols=default_symbols)
 		os.makedirs(arranged_path)
 	
 	os.chdir(csv_path)
+	logger.info('csv_path: '+csv_path)
 
 	# sort csv files by asset type and remove unwanted columns
 	for csv_name in csv_names:
-		part = pd.read_csv(csv_name)
+		part = pd.read_csv(csv_path + csv_name)
 
 		# a file must contain all cols in must_have_cols, otherwise it is a defect
 		# ignore defects for now. maybe log the filenames later

@@ -24,4 +24,4 @@ RUN cp /app/replacement/core.py $(python -c "from zipline.data.bundles import co
 RUN cp /app/replacement/minute_bars.py $(python -c "from zipline.data import minute_bars as _; import os; print(os.path.dirname(_.__file__))")
 
 # Run a WSGI server to serve the application.
-CMD gunicorn --workers=3 --worker-class=gevent --timeout=900 --bind=:$PORT backtester.wsgi
+CMD gunicorn --workers=3 --worker-class=gevent --timeout=2400 --bind=:$PORT backtester.wsgi

@@ -186,7 +186,7 @@ def ingest(request):
 	prefixes = get_prefixes(starttime, end=endtime)
 	aggr_names = []
 	for prefix in prefixes:
-		logger.info(prefix)
+		# logger.info(prefix)
 		# look up files in bucket using prefix to speed up searching
 		fblobs = bucket.list_blobs(prefix=prefix)
 		# download *aggregates.csv
@@ -195,7 +195,6 @@ def ingest(request):
 				fblob.download_to_filename(aggr_path+fblob.name)
 				aggr_names.append(fblob.name)
 
-	logger.info(aggr_names)
 	logger.info('Downloading completed')
 
 	# current working directory

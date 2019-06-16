@@ -35,11 +35,13 @@ def concat_new_csvs(csv_path, csv_names, arranged_path, symbols=default_symbols)
 		os.makedirs(arranged_path)
 	
 	os.chdir(csv_path)
-	logger.info('csv_path: '+csv_path)
-
+	
 	# sort csv files by asset type and remove unwanted columns
 	for csv_name in csv_names:
-		part = pd.read_csv(csv_path + csv_name)
+		try:
+			part = pd.read_csv(csv_path + csv_name)
+		except:  # mostly EmptyDataError: *-aggregates.csv empty due to crawler error
+			continue
 
 		# a file must contain all cols in must_have_cols, otherwise it is a defect
 		# ignore defects for now. maybe log the filenames later

@@ -17,9 +17,9 @@ Dockerfile
 .git
 .gitignore
 .hg
-last_ingest.txt
-BTCUSDT.csv
-ETHBTC.csv
-XLMBTC.csv
-XRPBTC.csv
+**/last_ingest.txt
+**/BTCUSDT.csv
+**/ETHBTC.csv
+**/XLMBTC.csv
+**/XRPBTC.csv
 .svn

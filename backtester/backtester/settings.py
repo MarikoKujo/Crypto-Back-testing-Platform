@@ -23,7 +23,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = '(h!+n#455*u^64o_ff-9qg#17tcbym*e_9!22!&eq%csdisr#_'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['backtester-dot-cryptos-211011.appspot.com','localhost',
                     'backtester.cryptos-211011.appspot.com']

@@ -6,6 +6,7 @@ import glob
 import json
 import logging
 import os
+import requests
 from datetime import datetime, timedelta
 from io import StringIO
 
@@ -72,6 +73,8 @@ def index(request):
 			max_to = datetime.strptime(max_to, '%Y-%m-%d')-timedelta(days=1)
 		except:
 			logger.exception('Cannot read last ingest or convert to datetime')
+			error_message = ('Cannot get correct available time range '
+						'due to network issue. Please try to refresh the page.'
 			# set max_to as yesterday
 			max_to = datetime.utcnow().date()-timedelta(days=1)
 	
@@ -111,30 +114,22 @@ def ingest(request):
 	# client for GCS
 	client = storage.Client()
 
+
+	# retrieve latest ingest time from GCS
 	try:
-		# read start time from file
+		bucket = client.get_bucket(GS_ASSETS_BUCKET_NAME)
+		fblob = bucket.get_blob(record_name)
+		fblob.download_to_filename(record_file)
+
 		with open(record_file,'r') as record:
 			# time of last ingestion, UTC
 			starttime = record.read()
 		# remove possible line break char
 		starttime = starttime[:len('YYYY-MM-DD HH:MM:SS')]
 	except:
-		# retrieve latest ingest time from GCS
-		try:
-			bucket = client.get_bucket(GS_ASSETS_BUCKET_NAME)
-			fblob = bucket.get_blob(record_name)
-			fblob.download_to_filename(record_file)
-
-			with open(record_file,'r') as record:
-				# time of last ingestion, UTC
-				starttime = record.read()
-			# remove possible line break char
-			starttime = starttime[:len('YYYY-MM-DD HH:MM:SS')]
-		except:
-			logger.exception('Cannot read last ingest time from file correctly')
-			# set start time as yesterday, 00:20:00
-			starttime = (datetime.utcnow().date()-timedelta(days=1)).strftime('%Y-%m-%d')
-			starttime = starttime+' 00:20:00'
+		logger.exception('Cannot read last ingest time from file correctly')
+		return HttpResponse('Error: Connection failed when '
+					'trying to access Google Cloud Storage. Please try again.')
 	
 	# get and ingest data from starttime to endtime
 	starttimestamp = datetime.strptime(starttime, '%Y-%m-%d %H:%M:%S')
@@ -152,13 +147,18 @@ def ingest(request):
 						if not os.path.isfile(arranged_path+asset+'.csv')]
 		try:
 			bucket = client.get_bucket(GS_ASSETS_BUCKET_NAME)
+			for symbol in download_list:
+				fblob = bucket.get_blob(symbol+'.csv')
+				fblob.download_to_filename(arranged_path+symbol+'.csv')
+		except requests.exceptions.ChunkedEncodingError:
+			logger.exception('Network fails')
+			return HttpResponse('Error: Connection failed. '
+							'Please refresh the page and try to ingest again.')
 		except:
-			logger.exception('Cannot get assets data bucket from Google Cloud Storage')
+			logger.exception('Cannot get assets data from Google Cloud Storage')
 			return HttpResponse('Error: Cannot get pricing data from Cloud Storage bucket '
 						+GS_ASSETS_BUCKET_NAME)
-		for symbol in download_list:
-			fblob = bucket.get_blob(symbol+'.csv')
-			fblob.download_to_filename(arranged_path+symbol+'.csv')
+		
 		# do the ingestion, return
 		stdout,stderr = run_ingest(ingest_path, bname)
 		stdout = stdout.decode("utf-8")
@@ -177,23 +177,27 @@ def ingest(request):
 	try:
 		# set bucket to crawler data bucket
 		bucket = client.get_bucket(GS_CRAWLERDATA_BUCKET_NAME)
+		# get all possible prefixes of files collected between starttime and endtime
+		prefixes = get_prefixes(starttime, end=endtime)
+		aggr_names = []
+		for prefix in prefixes:
+			# logger.info(prefix)
+			# look up files in bucket using prefix to speed up searching
+			fblobs = bucket.list_blobs(prefix=prefix)
+			# download *aggregates.csv
+			for fblob in fblobs:
+				if fblob.name.endswith('aggregates.csv'):
+					fblob.download_to_filename(aggr_path+fblob.name)
+					aggr_names.append(fblob.name)
+	except requests.exceptions.ChunkedEncodingError:
+		logger.exception('Network fails')
+		return HttpResponse('Error: Connection failed. '
+						'Please refresh the page and try to ingest again.')
 	except:
-		logger.exception('Cannot get crawler data bucket from Google Cloud Storage')
+		logger.exception('Cannot get crawler data from Google Cloud Storage')
 		# return HttpResponse(status=502)  # Bad Gateway  # set to 500 to get notified
 		return HttpResponse('Error: Cannot get crawler data from Cloud Storage bucket '
 						+GS_CRAWLERDATA_BUCKET_NAME)
-	# get all possible prefixes of files collected between starttime and endtime
-	prefixes = get_prefixes(starttime, end=endtime)
-	aggr_names = []
-	for prefix in prefixes:
-		# logger.info(prefix)
-		# look up files in bucket using prefix to speed up searching
-		fblobs = bucket.list_blobs(prefix=prefix)
-		# download *aggregates.csv
-		for fblob in fblobs:
-			if fblob.name.endswith('aggregates.csv'):
-				fblob.download_to_filename(aggr_path+fblob.name)
-				aggr_names.append(fblob.name)
 
 	logger.info('Downloading completed')
 
@@ -201,7 +205,16 @@ def ingest(request):
 	cwd = os.getcwd()
 	
 	# data preparation
-	concat_new_csvs(aggr_path, aggr_names, arranged_path, symbols=assets_list)
+	try:
+		concat_new_csvs(aggr_path, aggr_names, arranged_path, symbols=assets_list)
+	except requests.exceptions.ChunkedEncodingError:
+		logger.exception('Network fails')
+		return HttpResponse('Error: Connection failed. '
+						'Please refresh the page and try to ingest again.')
+	except:
+		logger.exception('Cannot concat new csvs')
+		return HttpResponse('Error in data preparation. '
+						'Please refresh the page and try to ingest again.')
 	logger.info('Data preparation completed')
 
 	os.chdir(cwd)
@@ -401,17 +414,17 @@ def processing(request):
 			error_message = "Cannot complete backtest for strategy {0}.".format(idx+1)
 			logger.exception(error_message)
 			suggestion = (" There may be something wrong with data ingestion. "
-					"Please try to ingest data by visiting "
-					"http://backtester-dot-cryptos-211011.appspot.com/testapp/ingest/")
+					"Please refresh the page and try to ingest again.")
 			request.session['error_message'] = error_message + suggestion
 			return HttpResponseRedirect(reverse('testapp:index'))
 
 		except:
 			error_message = "Cannot complete backtest for strategy {0}".format(idx+1)
 			logger.exception(error_message)
-			suggestion = ("Please try to restart the server, and then visit "
-					"http://backtester-dot-cryptos-211011.appspot.com/testapp/ingest/ "
-					"to ingest data manually.")
+			suggestion = ("Please visit "
+					"https://console.cloud.google.com/appengine/versions?"
+					"project=cryptos-211011&serviceId=backtester&versionssize=50"
+					" to restart the server and then try to ingest data again.")
 			request.session['error_message'] = error_message + suggestion
 			return HttpResponseRedirect(reverse('testapp:index'))
 

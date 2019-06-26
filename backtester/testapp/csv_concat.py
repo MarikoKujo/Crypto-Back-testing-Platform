@@ -93,18 +93,11 @@ def concat_new_csvs(csv_path, csv_names, arranged_path, symbols=default_symbols)
 		try:
 			old = pd.read_csv(arranged_path+symbol+'.csv')
 		except:  # FileNotFoundError
-			try:
-				# retrieve old file from GCS bucket
-				fblob = bucket.get_blob(symbol+'.csv')
-				fblob.download_to_filename(arranged_path+symbol+'.csv')
+			# retrieve old file from GCS bucket
+			fblob = bucket.get_blob(symbol+'.csv')
+			fblob.download_to_filename(arranged_path+symbol+'.csv')
 
-				old = pd.read_csv(arranged_path+symbol+'.csv')
-			except:
-				logger.exception('Cannot read old asset file for '+symbol+', try to save new')
-				data.to_csv(os.path.join(arranged_path,symbol+'.csv'), 
-					index=False, float_format='%.10f')
-				logger.info('Asset '+symbol+' ok')
-				continue
+			old = pd.read_csv(arranged_path+symbol+'.csv')
 
 		# drop the last rows if timestamps are not continuous
 		while pd.to_datetime(old.iloc[-1,0]) >= data.iloc[0,0]:

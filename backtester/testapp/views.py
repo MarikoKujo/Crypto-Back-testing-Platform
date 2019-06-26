@@ -74,7 +74,7 @@ def index(request):
 		except:
 			logger.exception('Cannot read last ingest or convert to datetime')
 			error_message = ('Cannot get correct available time range '
-						'due to network issue. Please try to refresh the page.'
+						'due to network issue. Please try to refresh the page.')
 			# set max_to as yesterday
 			max_to = datetime.utcnow().date()-timedelta(days=1)
 	

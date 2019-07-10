@@ -1,4 +1,5 @@
 import gc
+import time
 from datetime import datetime
 
 import pandas as pd
@@ -189,6 +190,9 @@ def execute_backtest(start_dt, end_dt, init_cap,
 		return export_data
 
 
+
+	start_all = time.time()  # start time of backtest
+
 	# run backtest
 	perf = zipline.run_algorithm(start=start_date,
 						end=end_date,
@@ -212,7 +216,10 @@ def execute_backtest(start_dt, end_dt, init_cap,
 
 	gc.collect()
 	
-	return [res_overview, graph_div, daily_details, export_data]
+	end_all = time.time()  # end time of backtest
+	duration = "{:.2f} s".format(end_all - start_all)
+
+	return [res_overview, graph_div, daily_details, export_data, duration]
 
 
 def compare(results, filename_list):

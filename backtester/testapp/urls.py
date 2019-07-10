@@ -8,5 +8,6 @@ urlpatterns = [
     url(r'^results/$', views.results, name='results'),
     url(r'^processing/$', views.processing, name='processing'),
     url(r'^export/$', views.export, name='export'),
-    url(r'^ingest/$', views.ingest, name='ingest')
+    url(r'^ingest/$', views.ingest, name='ingest'),
+    url(r'^getdata/$', views.getdata, name='getdata')
 ]

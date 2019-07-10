@@ -58,6 +58,9 @@
 						<li>Volatility:<br><span id="stats">{{p.0.volatility}}</span></li>
 						<li>Sharpe Ratio:<br><span id="stats">{{p.0.sharpe_ratio}}</span></li>
 					</ul>
+					{% if p.4 %}
+						<br><span id="runtime">Run time: {{ p.4 }}</span>
+					{% endif %}
 					<br>{{p.1|safe}}
 				</div>
 				<div id="perftabs-daily">{{p.2|safe}}</div>

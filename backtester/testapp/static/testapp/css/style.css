@@ -26,6 +26,7 @@ div#users-contain table td, div#users-contain table th { border: 1px solid #eee;
 #stat-ovw { list-style-type: none; margin: 0 30px; padding: 0; overflow: hidden; }
 #stat-ovw li { float: left; margin-right: 30px; font-size: .9em; }
 #stats { font-size: 1.8em;}
+#runtime { margin: 5px 0 0 30px; padding: 0; overflow: hidden; float: left; font-size: .9em; }
 
 .plotly-graph-div { width: 83% !important; }
 

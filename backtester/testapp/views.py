@@ -1,4 +1,4 @@
-"""Views of backtester app, including views for GAE cron jobs.
+"""Views of backtester app
 """
 import csv
 import gc
@@ -81,9 +81,16 @@ def index(request):
 	# max_from should be one day earlier than max_to
 	max_from = max_to-timedelta(days=1)
 
+	max_to_str = max_to.strftime('%Y-%m-%d')
+	max_from_str = max_from.strftime('%Y-%m-%d')
+
+	# will be used to validate dates in processing view
+	request.session['max_to'] = max_to_str
+	request.session['max_from'] = max_from_str
+
 	context = {'assets': assets_list, 
-				'max_to': max_to.strftime('%Y-%m-%d'),
-				'max_from': max_from.strftime('%Y-%m-%d')}
+				'max_to': max_to_str,
+				'max_from': max_from_str}
 
 	if 'error_message' in request.session:
 		context['error_message'] = request.session['error_message']
@@ -92,6 +99,7 @@ def index(request):
 	# from django.template import loader
 	# return HttpResponse(loader.get_template('testapp/index.html').render(context, request))
 	return render(request, 'testapp/index.html', context)
+
 
 
 def ingest(request):
@@ -272,41 +280,36 @@ def ingest(request):
 
 
 
+def getdata(request):
+	"""Download ingested data file."""
+
+	if 'pair' not in request.GET:
+		return HttpResponseRedirect(reverse('testapp:index'))
+
+	asset = request.GET['pair']
+	asset_data = aggr_path+'arranged/minute/'+asset+'.csv'
+
+	try:
+		with open(asset_data, 'rb') as data:
+			response = HttpResponse(data.read(), content_type='text/csv')
+			response['Content-Disposition'] = 'attachment; filename='+asset+'.csv'
+			return response
+	except:
+		if not os.path.isfile(asset_data):
+			if asset not in assets_list:
+				error_message = 'Requested trading pair is not available.'
+			else:
+				error_message = 'File does not exist. Please ingest data before downloading.'
+		else:
+			error_message = 'Error in reading data.'
+		request.session['error_message'] = error_message
+		return HttpResponseRedirect(reverse('testapp:index'))
+
+
+
 def export(request):
 	"""Export backtest result to .csv file and store in Google Cloud Storage."""
-	# Deprecated: export to Google Cloud Storage bucket
-	# ----------------------------------
-	# if request.method == 'POST':
-		
-	# 	# generate file name
-	# 	namestr = request.POST['expname']
-	# 	timestr = datetime.now().strftime("%Y%m%d-%H%M%S")
-	# 	fname = timestr+'_'+namestr+'.csv'
 
-	# 	try:  # get file string for exporting
-	# 		exp_list = request.session['exp_list']
-	# 		expidx = int(request.POST['expidx'])
-	# 		dfs_json = exp_list[expidx]
-	# 		dfs = pd.read_json(dfs_json)
-	# 		fstring = dfs.to_csv(index_label='date')
-	# 	except:
-	# 		logger.exception('Cannot convert to csv file')
-	# 		return HttpResponse('Error: Cannot convert to csv file.')
-
-	# 	try:  # export file to storage bucket
-	# 		client = storage.Client()
-	# 		bucket = client.get_bucket(GS_RESULTS_BUCKET_NAME)
-	# 		fblob = bucket.blob(fname)
-	# 		fblob.upload_from_string(fstring, content_type='text/csv')
-	# 	except:
-	# 		logger.exception('Cannot upload to backtest results bucket')
-	# 		return HttpResponse('Error: Cannot upload to Google Cloud Storage.')
-
-	# 	return HttpResponse(fname+' successfully exported.')
-
-	# # ideally this should not be reached
-	# return HttpResponseRedirect(reverse('testapp:results'))
-	# ----------------------------------
 	if request.method == 'POST':
 		# generate file name
 		namestr = request.POST['expname']
@@ -334,6 +337,7 @@ def export(request):
 
 def results(request):
 	"""Display backtest results."""
+
 	if 'perf' not in request.session:
 		return HttpResponseRedirect(reverse('testapp:index'))
 
@@ -349,10 +353,47 @@ def results(request):
 	return render(request, 'testapp/result.html', context)
 
 
+
 def processing(request):
 	"""Run backtests."""
+
 	if request.method != 'POST':  # this page should not be accessed without POST data
 		return HttpResponseRedirect(reverse('testapp:index'))
+
+	# validate dates: format, range, end date is larger than start date
+	start_date = request.POST['from']
+	try:
+		val_from = datetime.strptime(start_date, '%Y-%m-%d')
+	except ValueError:
+		error_message = 'Incorrect start date format, should be YYYY-MM-DD.'
+		request.session['error_message'] = error_message
+		return HttpResponseRedirect(reverse('testapp:index'))
+	max_from = datetime.strptime(request.session['max_from'], '%Y-%m-%d')
+	min_from = datetime(2018, 10, 24)
+	if not min_from <= val_from <= max_from:
+		error_message = 'Invalid start date. Please check the valid range in the calendar.'
+		request.session['error_message'] = error_message
+		return HttpResponseRedirect(reverse('testapp:index'))
+
+	end_date = request.POST['to']
+	try:
+		val_to = datetime.strptime(end_date, '%Y-%m-%d')
+	except ValueError:
+		error_message = 'Incorrect end date format, should be YYYY-MM-DD.'
+		request.session['error_message'] = error_message
+		return HttpResponseRedirect(reverse('testapp:index'))
+	max_to = datetime.strptime(request.session['max_to'], '%Y-%m-%d')
+	min_to = datetime(2018, 10, 25)
+	if not min_to <= val_to <= max_to:
+		error_message = 'Invalid end date. Please check the valid range in the calendar.'
+		request.session['error_message'] = error_message
+		return HttpResponseRedirect(reverse('testapp:index'))
+
+	if not val_from < val_to:
+		error_message = 'Start date should be earlier than end date.'
+		request.session['error_message'] = error_message
+		return HttpResponseRedirect(reverse('testapp:index'))
+
 
 	trades_list = []
 	filename_list = []
@@ -390,8 +431,6 @@ def processing(request):
 
 	# get other parameters for backtesting
 	# these params are common for all strategy files
-	start_date = request.POST['from']
-	end_date = request.POST['to']
 	init_capital = request.POST['capital']
 	trading_pair = request.POST['tradingpair']
 	commission_method = request.POST['comm']
@@ -406,8 +445,8 @@ def processing(request):
 	res_overview_list = []
 	for idx,trade in enumerate(trades_list):
 		try:
-			# perf : [res_overview, graph_div, daily_details, export_data]
-			# list : [dict, string(html_div), pd.DataFrame, pd.DataFrame]
+			# perf : [res_overview, graph_div, daily_details, export_data, duration]
+			# list : [dict, string(html_div), pd.DataFrame, pd.DataFrame, string]
 			perf = execute_backtest(start_date, end_date, init_capital, trading_pair, 
 								commission_method, commission_cost, trade)
 		except (FileNotFoundError, ValueError) as e:
@@ -419,7 +458,7 @@ def processing(request):
 			return HttpResponseRedirect(reverse('testapp:index'))
 
 		except:
-			error_message = "Cannot complete backtest for strategy {0}".format(idx+1)
+			error_message = "Cannot complete backtest for strategy {0}. ".format(idx+1)
 			logger.exception(error_message)
 			suggestion = ("Please visit "
 					"https://console.cloud.google.com/appengine/versions?"
@@ -433,9 +472,9 @@ def processing(request):
 		exp_list.append(perf[3].to_json())
 
 		# render two dataframes to html strings to store in session
-		perf[2] = perf[2].to_html(classes=df_class, max_rows=50)  # daily_details
-		perf[3] = perf[3].to_html(classes=df_class, max_rows=50)  # export_data
-		perf_list.append(perf)  # [res_overview, graph_div, daily_details, export_data]
+		perf[2] = perf[2].to_html(classes=df_class)  #, max_rows=50)  # daily_details
+		perf[3] = perf[3].to_html(classes=df_class)  #, max_rows=50)  # export_data
+		perf_list.append(perf)  # [res_overview,graph_div,daily_details,export_data,duration]
 		
 		# will be used as param for compare() for results comparison
 		res_overview_list.append(perf[0])

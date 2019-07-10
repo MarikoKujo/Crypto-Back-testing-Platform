@@ -159,7 +159,7 @@ $( function() {
   ingbutton.button().on( "click", function() {
     // disable buttons
     ingbutton.button("option", "disabled", true);
-    $( "#submitparams ").prop("disabled", "true");
+    $( "#submitparams" ).prop("disabled", "true");
     inginfo.attr("style", "color:black;");
     inginfo.html("Ingesting data... Please do not close the page");
 
@@ -176,8 +176,25 @@ $( function() {
       inginfo.html(data);
       // enable buttons
       ingbutton.button("option", "disabled", false);
-      $( "#submitparams ").removeAttr('disabled');
+      $( "#submitparams" ).removeAttr('disabled');
     });
+  });
+});
+
+// Download prepared pricing data
+$( function() {
+  dialog = $( "#dialog-getdata" ).dialog({
+    autoOpen: false,
+    resizable: false,
+    height: "auto",
+    width: "auto",
+    modal: true
+  });
+
+  $( ".getdatabutton" ).button();
+
+  $( "#getdata" ).button().on( "click", function() {
+    dialog.dialog( "open" );
   });
 });
 

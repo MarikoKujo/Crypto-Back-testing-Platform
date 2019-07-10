@@ -29,9 +29,9 @@
 <body>
     {% if error_message %}<p><strong style="color:red;">{{ error_message }}</strong></p>{% endif %}
     <form id="backtestparams" action="{% url 'testapp:processing' %}" enctype="multipart/form-data" method="post">{% csrf_token %}
-        <input type="text" id="from" name="from" style="width:100px;" class="text ui-widget-content ui-corner-all" placeholder="start date" required readonly />
+        <input type="text" id="from" name="from" style="width:100px;" class="text ui-widget-content ui-corner-all" placeholder="start date" required />
     	<label for="to">to</label>
-		<input type="text" id="to" name="to" style="width:100px;" class="text ui-widget-content ui-corner-all" placeholder="end date" required readonly />
+		<input type="text" id="to" name="to" style="width:100px;" class="text ui-widget-content ui-corner-all" placeholder="end date" required />
         <label for="capital">&nbsp; capital base</label>
         <input type="text" id="capital" name="capital" style="width:100px;" class="text ui-widget-content ui-corner-all" value="100000" 
         required pattern="[0-9]*[.]?[0-9]+" title="positive number with or without decimals" />
@@ -46,6 +46,7 @@
         <input type="text" style="display:none;" name="commamount" id="commamount" value="0.1" />
         <button type="button" id="settings">Settings</button>
         <button type="button" id="ingest" data-url="{% url 'testapp:ingest' %}">Ingest Data</button>
+        <button type="button" id="getdata">Download Pricing Data</button>
         <br>
         <label id="infolabel" for="strategies">Select trading strategy files in .csv format:</label>
         <input type="file" id="strategies" name="strategies" accept=".csv" multiple />
@@ -56,7 +57,7 @@
     <hr>
 
     <div style="font-size:small">
-        <p>A trading strategy file should have two fields in each row, trading timestamp and quantity(buy+/sell-), seperated by a single comma.<br>Each row represents a trading signal.</p>
+        <p>A trading strategy file should have two fields in each row, trading timestamp and quantity(buy+/sell-), separated by a single comma.<br>Each row represents a trading signal.</p>
         <p>For example,</p>
         <p> 2019-05-03 09:26:00, -42<br>
             2019-05-04 13:32:00, 37.50<br>
@@ -80,6 +81,18 @@
                 <input type="submit" tabindex="-1" style="position:absolute; top:-1000px"/>
             </fieldset>
         </form>
+    </div>
+
+    <div id="dialog-getdata" title="Download Pricing Data">
+        <p>Prepared data is available from 2018-10-14 to {{ max_to }}.</p>
+        <p>To download data, please ingest data first.</p>
+        <p>Click to download:</p>
+        {% for asset in assets %}
+            <form action="{% url 'testapp:getdata' %}" method="get" style="display:inline;">
+                <input type="text" name="pair" style="display:none;" value="{{ asset }}" />
+                <button type="submit" class="getdatabutton">{{ asset }}</button>
+            </form>
+        {% endfor %}
     </div>
 
 </body>

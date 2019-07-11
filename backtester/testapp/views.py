@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import requests
+import time
 from datetime import datetime, timedelta
 from io import StringIO
 
@@ -121,6 +122,8 @@ def ingest(request):
 
 	# client for GCS
 	client = storage.Client()
+
+	start_ingest = time.time()  # start time of ingest
 
 
 	# retrieve latest ingest time from GCS
@@ -275,8 +278,11 @@ def ingest(request):
 	
 	# force the Garbage Collector to release unreferenced memory
 	gc.collect()
+	end_ingest = time.time()  # end time of ingest
+	duration = str(timedelta(seconds=int(end_ingest - start_ingest)))
 
-	return HttpResponse('Ingestion completed. Please refresh the page.')
+	return HttpResponse('Ingestion completed. Duration: ' + duration
+				+ '. Please refresh the page.')
 
 
 

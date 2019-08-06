@@ -187,7 +187,7 @@ def execute_backtest(start_dt, end_dt, init_cap,
 		trans_detail = []
 		trans_ids = []
 		trans_dicts_display = []
-		new_id = 0
+		new_id = -1
 		for idx, daily_trans in enumerate(perf['transactions']):
 			daily_trans_dicts_display = []
 			daily_trans_ids = []

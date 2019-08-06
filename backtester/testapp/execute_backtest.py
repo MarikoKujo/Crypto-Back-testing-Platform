@@ -165,29 +165,74 @@ def execute_backtest(start_dt, end_dt, init_cap,
 		Returns:
 		export_data : pd.DataFrame, the DataFrame to be converted to csv file
 		"""
-		export_data = outperf[[trading_pair,'total returns']]
+		display_data = outperf[[trading_pair,'total returns']]  # date as index
 		# export_data.insert(loc=2, column='orders', value=perf['orders'].values)
 
-		orders_set = []
-		for idx,daily_orders in enumerate(perf['orders']):
-			daily_order_dicts = []
-			for order in daily_orders:
-				if order['status'] == 1:  # order is filled
-					tran = next((t for t in perf['transactions'][idx] 
-							if t['order_id'] == order['id']), None)
-					price = tran['price'] if tran is not None else 'not available'
-					# use list of tuples if sequence of keys matters
-					order_dict = {'created' : order['created'].strftime("%Y-%m-%d %H:%M:%S"),
-							'amount' : order['amount'],
-							'filled' : order['dt'].strftime("%Y-%m-%d %H:%M:%S"),
-							'price' : price}
-					daily_order_dicts.append(order_dict)
+		# orders_set = []
+		# for idx,daily_orders in enumerate(perf['orders']):
+		# 	daily_order_dicts = []
+		# 	for order in daily_orders:
+		# 		if order['status'] == 1:  # order is filled
+		# 			tran = next((t for t in perf['transactions'][idx] 
+		# 					if t['order_id'] == order['id']), None)
+		# 			price = tran['price'] if tran is not None else 'not available'
+		# 			# use list of tuples if sequence of keys matters
+		# 			order_dict = {'created' : order['created'].strftime("%Y-%m-%d %H:%M:%S"),
+		# 					'amount' : order['amount'],
+		# 					'filled' : order['dt'].strftime("%Y-%m-%d %H:%M:%S"),
+		# 					'price' : price}
+		# 			daily_order_dicts.append(order_dict)
 
-			orders_set.append(daily_order_dicts)
+		# 	orders_set.append(daily_order_dicts)
+		trans_detail = []
+		trans_ids = []
+		trans_dicts_display = []
+		new_id = 0
+		for idx, daily_trans in enumerate(perf['transactions']):
+			daily_trans_dicts_display = []
+			daily_trans_ids = []
+			for trans in daily_trans:
+				order_id = trans['order_id']
+				order_of_trans = next((o for o in perf['orders'][idx]
+							if o['id'] == order_id), None)
+				if order_of_trans is not None:
+					created = order_of_trans['created'].strftime("%Y-%m-%d %H:%M:%S")
+				else:
+					created = 'not available'
+
+				new_id += 1
+				daily_trans_ids.append(new_id)
+
+				trans_dict = {'transaction_id': new_id,
+						'order_created': created,
+						'amount': trans['amount'],
+						'transaction_time': trans['dt'].strftime("%Y-%m-%d %H:%M:%S"),
+						trading_pair: trans['price']}
+				trans_detail.append(trans_dict)
+
+				trans_dict_display = {'id': new_id,
+						'order_created': created,
+						'amount': trans['amount'],
+						'time': trans_dict['transaction_time'],
+						'price': trans['price']}
+				daily_trans_dicts_display.append(trans_dict_display)
+			
+			trans_ids.append(daily_trans_ids)
+			trans_dicts_display.append(daily_trans_dicts_display)
 
 
-		export_data.insert(loc=2, column='orders', value=orders_set)
-		return export_data
+		exp_daily = display_data.copy(deep=True)
+		exp_daily.insert(loc=1, column='transaction_id', value=trans_ids)
+		exp_daily.rename(columns={'total returns':'total_returns'}, inplace=True)
+		# index of exp_daily will be named 'date' in export view in views.py
+
+		exp_detail = pd.DataFrame(trans_detail)
+		# use index=False when convert to csv in export view in views.py
+
+		display_data.insert(loc=1, column='transactions', 
+										value=trans_dicts_display)
+
+		return [exp_daily, exp_detail, display_data]
 
 
 

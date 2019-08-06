@@ -8,8 +8,9 @@ import logging
 import os
 import requests
 import time
+import zipfile
 from datetime import datetime, timedelta
-from io import StringIO
+from io import BytesIO, StringIO
 
 import pandas as pd
 from django.conf import settings as djangoSettings
@@ -172,11 +173,11 @@ def ingest(request):
 		
 		# do the ingestion, return
 		stdout,stderr = run_ingest(ingest_path, bname)
-		stdout = stdout.decode("utf-8")
+		stdout = stdout.decode('utf-8')
 		logger.info(stdout)
 		if stderr is not None:
-			stderr = stderr.decode("utf-8")
-			if stderr != "":
+			stderr = stderr.decode('utf-8')
+			if stderr != '':
 				logger.warning(stderr)
 				# return HttpResponse(status=500)  # Internal Server Error, cannot ingest
 				# return HttpResponse('Error: Cannot finish ingestion.')
@@ -238,11 +239,11 @@ def ingest(request):
 	# 		logger.warning(stderr)
 	
 	stdout,stderr = run_ingest(ingest_path, bname)
-	stdout = stdout.decode("utf-8")
+	stdout = stdout.decode('utf-8')
 	logger.info(stdout)
 	if stderr is not None:
-		stderr = stderr.decode("utf-8")
-		if stderr != "":
+		stderr = stderr.decode('utf-8')
+		if stderr != '':
 			logger.warning(stderr)
 			# return HttpResponse('Error: Cannot finish ingestion.')
 
@@ -273,15 +274,16 @@ def ingest(request):
 
 	os.chdir(cwd)
 
-	msg = 'Ingestion of data from '+starttime+' to '+endtime+' completed'
-	logger.info(msg)
-	
 	# force the Garbage Collector to release unreferenced memory
 	gc.collect()
 	end_ingest = time.time()  # end time of ingest
 	duration = str(timedelta(seconds=int(end_ingest - start_ingest)))
 
-	return HttpResponse('Ingestion completed. Duration: ' + duration
+	msg = 'Ingestion of data from '+starttime+' to '+endtime+' completed in '+duration
+	logger.info(msg)
+	
+	return HttpResponse('Ingestion completed. Data range: ' + starttime
+				+ ' to ' + endtime + '. Duration: ' + duration
 				+ '. Please refresh the page.')
 
 
@@ -316,28 +318,42 @@ def getdata(request):
 def export(request):
 	"""Export backtest result to .csv file and store in Google Cloud Storage."""
 
-	if request.method == 'POST':
-		# generate file name
-		namestr = request.POST['expname']
-		timestr = datetime.now().strftime("%Y%m%d-%H%M%S")
-		fname = timestr+'_'+namestr+'.csv'
+	if request.method != 'POST':
+		return HttpResponseRedirect(reverse('testapp:results'))
 
-		try:  # get file string for exporting
-			exp_list = request.session['exp_list']
-			expidx = int(request.POST['expidx'])
-			dfs_json = exp_list[expidx]
-			dfs = pd.read_json(dfs_json)
-			fstring = dfs.to_csv(index_label='date')
-		except:
-			logger.exception('Cannot convert to csv file')
-			return HttpResponse('Error: Cannot convert to csv file.')
+	# generate file name
+	namestr = request.POST['expname']
+	timestr = datetime.now().strftime('%Y%m%d%H%M%S')
+	fname = timestr+'_'+namestr
 
-		response = HttpResponse(fstring, content_type='text/csv')
-		response['Content-Disposition'] = 'attachment; filename="'+fname+'"'
-		return response
+	try:  # get file string for exporting
+		exp_list = request.session['exp_list']
+		expidx = int(request.POST['expidx'])
+		dfs_json = exp_list[expidx]
 
-	# ideally this should not be reached
-	return HttpResponseRedirect(reverse('testapp:results'))
+		exp_daily = pd.read_json(dfs_json[0]).to_csv(index_label='date')
+
+		exp_detail = pd.read_json(dfs_json[1])
+		# cols_sequence = ['transaction_id', 'order_created', 'amount', 
+		# 				'transaction_time', 'price']
+		# exp_detail = exp_detail[cols_sequence]
+		new_seq = [3,2,1,4,0]
+		exp_detail = exp_detail[exp_detail.columns[new_seq]]
+		exp_detail.sort_index(inplace=True)
+		exp_detail = exp_detail.to_csv(index=False)
+
+		# wrap two .csv files into a zip file
+		mf = BytesIO()
+		with zipfile.ZipFile(mf, mode='w', compression=zipfile.ZIP_DEFLATED) as zf:
+			zf.writestr(fname+'_daily_data.csv',str.encode(exp_daily))
+			zf.writestr(fname+'_transactions_detail.csv',str.encode(exp_detail))
+	except:
+		logger.exception('Cannot convert to csv files')
+		return HttpResponse('Error: Cannot convert to csv files.')
+
+	response = HttpResponse(mf.getvalue(), content_type='application/zip')
+	response['Content-Disposition'] = 'attachment; filename="'+fname+'.zip"'
+	return response
 
 
 
@@ -421,7 +437,7 @@ def processing(request):
 				request.session['error_message'] = error_message
 				return HttpResponseRedirect(reverse('testapp:index'))
 		else:  # for now refuse file > 5 MB
-			error_message = "Single file should not be larger than 5 MB"
+			error_message = 'Single file should not be larger than 5 MB'
 			request.session['error_message'] = error_message
 			return HttpResponseRedirect(reverse('testapp:index'))
 		# else: 
@@ -456,30 +472,32 @@ def processing(request):
 			perf = execute_backtest(start_date, end_date, init_capital, trading_pair, 
 								commission_method, commission_cost, trade)
 		except (FileNotFoundError, ValueError) as e:
-			error_message = "Cannot complete backtest for strategy {0}.".format(idx+1)
+			error_message = 'Cannot complete backtest for strategy {0}.'.format(idx+1)
 			logger.exception(error_message)
-			suggestion = (" There may be something wrong with data ingestion. "
-					"Please refresh the page and try to ingest again.")
+			suggestion = (' There may be something wrong with data ingestion. '
+					'Please refresh the page and try to ingest again.')
 			request.session['error_message'] = error_message + suggestion
 			return HttpResponseRedirect(reverse('testapp:index'))
 
 		except:
-			error_message = "Cannot complete backtest for strategy {0}. ".format(idx+1)
+			error_message = 'Cannot complete backtest for strategy {0}. '.format(idx+1)
 			logger.exception(error_message)
-			suggestion = ("Please visit "
-					"https://console.cloud.google.com/appengine/versions?"
-					"project=cryptos-211011&serviceId=backtester&versionssize=50"
-					" to restart the server and then try to ingest data again.")
+			suggestion = ('Please visit '
+					'https://console.cloud.google.com/appengine/versions?'
+					'project=cryptos-211011&serviceId=backtester&versionssize=50'
+					' to restart the server and then try to ingest data again.')
 			request.session['error_message'] = error_message + suggestion
 			return HttpResponseRedirect(reverse('testapp:index'))
 
 		# render export_data dataframe to json string to store in session
 		# this string can be rendered back to original dataframe for downloading purpose
-		exp_list.append(perf[3].to_json())
+		exp_data = [perf[3][0].to_json(), perf[3][1].to_json()]
+		# exp_list.append(perf[3].to_json())
+		exp_list.append(exp_data)
 
 		# render two dataframes to html strings to store in session
 		perf[2] = perf[2].to_html(classes=df_class)  #, max_rows=50)  # daily_details
-		perf[3] = perf[3].to_html(classes=df_class)  #, max_rows=50)  # export_data
+		perf[3] = perf[3][2].to_html(classes=df_class)  #, max_rows=50)  # export_data
 		perf_list.append(perf)  # [res_overview,graph_div,daily_details,export_data,duration]
 		
 		# will be used as param for compare() for results comparison

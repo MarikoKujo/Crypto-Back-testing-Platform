@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+# Modifications copyright 2019 Technical University of Munich
 from abc import ABCMeta, abstractmethod
 import json
 import os
@@ -66,7 +68,7 @@ OHLC_RATIO = 1000
 # ETHBTC: sid 1, 10^6
 # XLMBTC & XRPBTC: sid 2&3, 10^8
 
-# YOU MODIFIED by mariko ADD THIS LINE
+# YOUDAN ZHANG MODIFIED added this line
 ohlc_ratios = {1:1000000, 2:100000000, 3:100000000}
 
 
@@ -455,7 +457,7 @@ class BcolzMinuteBarWriter(object):
     """
     COL_NAMES = ('open', 'high', 'low', 'close', 'volume')
 
-    # YOU MODIFIED by mariko ohlc_ratios_per_sid=None
+    # YOUDAN ZHANG MODIFIED ohlc_ratios_per_sid=None
     def __init__(self,
                  rootdir,
                  calendar,

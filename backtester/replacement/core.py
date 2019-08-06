@@ -1,3 +1,5 @@
+# Modifications copyright 2019 Technical University of Munich
+
 from collections import namedtuple
 import errno
 import os
@@ -220,7 +222,7 @@ def _make_bundle_core():
     # accidentally. Users may go through `register` to update this which will
     # warn when trampling another bundle.
     bundles = mappingproxy(_bundles)
-    #YOU MODIFIED calendar_name = 'NYSE',minutes_per_day=390,
+    # YOU XIE & YOUDAN ZHANG MODIFIED calendar_name = 'NYSE',minutes_per_day=390,
     @curry
     def register(name,
                  f,

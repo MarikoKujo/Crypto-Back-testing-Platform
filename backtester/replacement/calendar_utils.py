@@ -1,3 +1,5 @@
+# Modifications copyright 2019 Technical University of Munich
+
 from .always_open import AlwaysOpenCalendar
 from .errors import (
     CalendarNameCollision,
@@ -88,7 +90,7 @@ _default_calendar_aliases = {
     'ICEUS': 'IEPA',
     'NYFE': 'IEPA',
     'CFE': 'XCBF',
-    'AOC': '24/7',  # YOU MODIFIED by mariko ADD THIS LINE
+    'AOC': '24/7',  # YOUDAN ZHANG MODIFIED added this line
 }
 default_calendar_names = sorted(_default_calendar_factories.keys())
 

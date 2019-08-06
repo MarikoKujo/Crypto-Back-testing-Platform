@@ -12,6 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+# Modifications copyright 2019 Technical University of Munich
+
 import pandas as pd
 from trading_calendars import get_calendar
 # import request
@@ -42,7 +45,7 @@ def get_benchmark_returns(symbol):
 
     # return df.sort_index().tz_localize('UTC').pct_change(1).iloc[1:]
 
-    # MARIKO MODIFIED changed benchmark download to dummy data
+    # YOUDAN ZHANG MODIFIED changed benchmark download to dummy data
 
     cal = get_calendar('NYSE')
     first_date = pd.to_datetime('2018-10-23').tz_localize('UTC')

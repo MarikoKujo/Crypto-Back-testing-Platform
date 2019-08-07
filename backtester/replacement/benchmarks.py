@@ -16,8 +16,7 @@
 # Modifications copyright 2019 Technical University of Munich
 
 import pandas as pd
-from trading_calendars import get_calendar
-# import request
+import requests
 
 
 def get_benchmark_returns(symbol):
@@ -33,26 +32,17 @@ def get_benchmark_returns(symbol):
     The data is provided by IEX (https://iextrading.com/), and we can
     get up to 5 years worth of data.
     """
-    # r = requests.get(
-    #     'https://api.iextrading.com/1.0/stock/{}/chart/5y'.format(symbol)
-    # )
-    # data = r.json()
+    # YOUDAN ZHANG MODIFIED added token and changed iex api to the new one
+    IEX_TOKEN = 'pk_abce520fd8f0431193df2c9de05bcdc7'
+    r = requests.get(
+        'https://cloud.iexapis.com/stable/stock/{}/chart/5y?chartCloseOnly=True&token={}'.format(
+            symbol, IEX_TOKEN)
+    )
+    data = r.json()
 
-    # df = pd.DataFrame(data)
+    df = pd.DataFrame(data)
 
-    # df.index = pd.DatetimeIndex(df['date'])
-    # df = df['close']
+    df.index = pd.DatetimeIndex(df['date'])
+    df = df['close']
 
-    # return df.sort_index().tz_localize('UTC').pct_change(1).iloc[1:]
-
-    # YOUDAN ZHANG MODIFIED changed benchmark download to dummy data
-
-    cal = get_calendar('NYSE')
-    first_date = pd.to_datetime('2018-10-23').tz_localize('UTC')
-    last_date = pd.to_datetime('today').tz_localize('UTC')
-    dates = cal.sessions_in_range(first_date, last_date)
-
-    data = pd.DataFrame(0.0, index=dates, columns=['close'])
-    data = data['close']
-
-    return data.sort_index().iloc[1:]
+    return df.sort_index().tz_localize('UTC').pct_change(1).iloc[1:]

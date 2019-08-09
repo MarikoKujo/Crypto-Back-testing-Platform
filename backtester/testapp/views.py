@@ -334,11 +334,10 @@ def export(request):
 		exp_daily = pd.read_json(dfs_json[0]).to_csv(index_label='date')
 
 		exp_detail = pd.read_json(dfs_json[1])
-		# cols_sequence = ['transaction_id', 'order_created', 'amount', 
-		# 				'transaction_time', 'price']
-		# exp_detail = exp_detail[cols_sequence]
-		new_seq = [3,2,1,4,0]
-		exp_detail = exp_detail[exp_detail.columns[new_seq]]
+		cols_sequence = ['transaction_id', 'order_created', 'amount', 
+						'transaction_time', 'price']
+		exp_detail = exp_detail[cols_sequence]
+		exp_detail.rename(columns={'price':request.session['trading_pair']},inplace=True)
 		exp_detail.sort_index(inplace=True)
 		exp_detail = exp_detail.to_csv(index=False)
 
@@ -486,19 +485,18 @@ def processing(request):
 					'https://console.cloud.google.com/appengine/versions?'
 					'project=cryptos-211011&serviceId=backtester&versionssize=50'
 					' to restart the server and then try to ingest data again.')
-			request.session['error_message'] = error_message + suggestion
+			request.session['error_message'] = 'Unknown error: '+error_message+suggestion
 			return HttpResponseRedirect(reverse('testapp:index'))
 
-		# render export_data dataframe to json string to store in session
+		# render export_data dataframes to json strings to store in session
 		# this string can be rendered back to original dataframe for downloading purpose
 		exp_data = [perf[3][0].to_json(), perf[3][1].to_json()]
-		# exp_list.append(perf[3].to_json())
 		exp_list.append(exp_data)
 
 		# render two dataframes to html strings to store in session
 		perf[2] = perf[2].to_html(classes=df_class)  #, max_rows=50)  # daily_details
-		perf[3] = perf[3][2].to_html(classes=df_class)  #, max_rows=50)  # export_data
-		perf_list.append(perf)  # [res_overview,graph_div,daily_details,export_data,duration]
+		perf[3] = perf[3][2].to_html(classes=df_class)  #, max_rows=50)  # export_display
+		perf_list.append(perf)  # [res_overview,graph_div,daily_details,export_disp,duration]
 		
 		# will be used as param for compare() for results comparison
 		res_overview_list.append(perf[0])

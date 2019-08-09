@@ -166,24 +166,7 @@ def execute_backtest(start_dt, end_dt, init_cap,
 		export_data : pd.DataFrame, the DataFrame to be converted to csv file
 		"""
 		display_data = outperf[[trading_pair,'total returns']]  # date as index
-		# export_data.insert(loc=2, column='orders', value=perf['orders'].values)
-
-		# orders_set = []
-		# for idx,daily_orders in enumerate(perf['orders']):
-		# 	daily_order_dicts = []
-		# 	for order in daily_orders:
-		# 		if order['status'] == 1:  # order is filled
-		# 			tran = next((t for t in perf['transactions'][idx] 
-		# 					if t['order_id'] == order['id']), None)
-		# 			price = tran['price'] if tran is not None else 'not available'
-		# 			# use list of tuples if sequence of keys matters
-		# 			order_dict = {'created' : order['created'].strftime("%Y-%m-%d %H:%M:%S"),
-		# 					'amount' : order['amount'],
-		# 					'filled' : order['dt'].strftime("%Y-%m-%d %H:%M:%S"),
-		# 					'price' : price}
-		# 			daily_order_dicts.append(order_dict)
-
-		# 	orders_set.append(daily_order_dicts)
+		
 		trans_detail = []
 		trans_ids = []
 		trans_dicts_display = []
@@ -207,7 +190,7 @@ def execute_backtest(start_dt, end_dt, init_cap,
 						'order_created': created,
 						'amount': trans['amount'],
 						'transaction_time': trans['dt'].strftime("%Y-%m-%d %H:%M:%S"),
-						trading_pair: trans['price']}
+						'price': trans['price']}
 				trans_detail.append(trans_dict)
 
 				trans_dict_display = {'id': new_id,

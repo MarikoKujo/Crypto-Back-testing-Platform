@@ -13,6 +13,28 @@
 	<script src="{% static 'testapp/js/jquery-ui.js' %}"></script>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <script src="{% static 'testapp/js/result.js' %}"></script>
+    {% if perf|length == 1 %}
+    <style type="text/css">
+    .outterTabs>input[type=radio]:checked+label+.innerTabs {
+    display:block; /* show content for each tab specific target */
+	}
+    </style>
+    {% elif perf|length == 2 %}
+    <style type="text/css">
+    .outterTabs>input[type=radio]:checked+label+input+label+.innerTabs,
+	.outterTabs>input[type=radio]+label+input[type=radio]:checked+label+.innerTabs+.innerTabs {
+	    display:block; /* show content for each tab specific target */
+	}
+    </style>
+    {% elif perf|length == 3 %}
+    <style type="text/css">
+    .outterTabs>input[type=radio]:checked+label+input+label+input+label+.innerTabs,
+	.outterTabs>input[type=radio]+label+input[type=radio]:checked+label+input+label+.innerTabs+.innerTabs,
+	.outterTabs>input[type=radio]+label+input+label+input[type=radio]:checked+label+.innerTabs+.innerTabs+.innerTabs {
+	    display:block; /* show content for each tab specific target */
+	}
+    </style>
+    {% endif %}
 </head>
 <body>
 	<input type="text" id="from" style="width:100px;" class="text ui-widget-content ui-corner-all" placeholder="{{ start_date }}" readonly />
@@ -34,7 +56,7 @@
 
 	<hr>
 
-	<div id="tabs">
+	<!-- <div id="tabs">
 		<ul>
 		{% for name in filename_list %}
 			<li><a href="{% cycle '#filetabs-1' '#filetabs-2' '#filetabs-3' %}">{{ name|escape }}</a></li>
@@ -77,5 +99,58 @@
 			</div>
 		</div>
 		{% endfor %}
+	</div> -->
+
+	<div class="outterTabs tabsWrapper">
+		{% for name in filename_list %}
+		<input class="commandTab" type="radio" id="{% cycle 'outCmdTab0' 'outCmdTab1' 'outCmdTab2' %}" name="outCmdTabs" {% cycle 'checked' '' '' %}>
+		<label for="{% cycle 'outCmdTab0' 'outCmdTab1' 'outCmdTab2' %}">{{ name|escape }}</label>
+		{% endfor %}
+		{% for p in perf %}
+		<div class="tabContent innerTabs tabsWrapper">
+			<input class="commandTab" type="radio" id="{% cycle 'inCmdTabsOvw0' 'inCmdTabsOvw1' 'inCmdTabsOvw2' as tabOvw %}" name="{% cycle 'inCmdTabs0' 'inCmdTabs1' 'inCmdTabs2' as inCT %}" checked>
+			<label for="{{ tabOvw }}">Results Overview</label>
+			<input class="commandTab" type="radio" id="{% cycle 'inCmdTabsDaily0' 'inCmdTabsDaily1' 'inCmdTabsDaily2' as tabDly %}" name="{{ inCT }}">
+			<label for="{{ tabDly }}">Daily Details</label>
+			<input class="commandTab" type="radio" id="{% cycle 'inCmdTabsCmp0' 'inCmdTabsCmp1' 'inCmdTabsCmp2' as tabCmp %}" name="{{ inCT }}">
+			<label for="{{ tabCmp }}">Comparison</label>
+			<input class="commandTab" type="radio" id="{% cycle 'inCmdTabsExp0' 'inCmdTabsExp1' 'inCmdTabsExp2' as tabExp %}" name="{{ inCT }}">
+			<label for="{{ tabExp }}">Export to File</label>
+			<div class="tabContent">
+				<ul id="stat-ovw">
+					<li>Total Returns:<br><span id="stats">{{p.0.total_returns}}</span></li>
+					<li>Mean Daily Returns:<br><span id="stats">{{p.0.mean_daily_returns}}</span></li>
+					<li>Gross Returns:<br><span id="stats">{{p.0.gross_returns}}</span></li>
+					<li>Number of Trades:<br><span id="stats">{{p.0.number_of_trades}}</span></li>
+					<li>Volatility:<br><span id="stats">{{p.0.volatility}}</span></li>
+					<li>Sharpe Ratio:<br><span id="stats">{{p.0.sharpe_ratio}}</span></li>
+				</ul>
+				{% if p.4 %}
+					<br><span id="runtime">Run time: {{ p.4 }}</span>
+				{% endif %}
+				<br><br><div><div id="{% cycle 'aaa' 'bbb' 'ccc' as plotid %}" style="height: 40em; width: 60em;" class="plotly-graph-div"></div><script type="text/javascript">window.PLOTLYENV=window.PLOTLYENV || {};window.PLOTLYENV.BASE_URL="https://plot.ly";
+if (document.getElementById("{{plotid}}")) {
+    Plotly.newPlot("{{plotid}}", [{"y": [6564.6810000000005, 6529.6050000000005, 6539.009, 6504.426, 6488.581, 6345.539, 6330.637, 6369.799, 6409.906, 6433.403, 6387.814, 6488.688, 6468.218], "name": "Underlying", "type": "scatter", "x": ["2018-10-24 23:59:00", "2018-10-25 23:59:00", "2018-10-26 23:59:00", "2018-10-27 23:59:00", "2018-10-28 23:59:00", "2018-10-29 23:59:00", "2018-10-30 23:59:00", "2018-10-31 23:59:00", "2018-11-01 23:59:00", "2018-11-02 23:59:00", "2018-11-03 23:59:00", "2018-11-04 23:59:00", "2018-11-05 23:59:00"], "uid": "09cc546d-2edf-4fad-a32a-f8820e38ff45"}, {"type": "scatter", "x": ["2018-10-24 23:59:00", "2018-10-25 23:59:00", "2018-10-26 23:59:00", "2018-10-27 23:59:00", "2018-10-28 23:59:00", "2018-10-29 23:59:00", "2018-10-30 23:59:00", "2018-10-31 23:59:00", "2018-11-01 23:59:00", "2018-11-02 23:59:00", "2018-11-03 23:59:00", "2018-11-04 23:59:00", "2018-11-05 23:59:00"], "y": [-0.04985015591499631, -0.21659030278999358, -0.20008176778999742, -0.35702498538999816, -0.42484840764000076, -0.6398795763400045, -0.796068902680003, -0.5654047226800023, -0.3222133984850065, -0.13661628849501695, -0.40049908717000837, 0.40831135934999274, 0.20402075934999675], "name": "Cumulative trading return", "uid": "7a34a01f-564c-4e43-affe-91bde049566b", "yaxis": "y2"}], {"yaxis2": {"side": "right", "tickfont": {"color": "red"}, "title": {"font": {"color": "red"}, "text": "cumulative trading return"}, "overlaying": "y"}, "yaxis": {"title": {"text": "BTCUSDT"}}}, {"linkText": "Export to plot.ly", "plotlyServerURL": "https://plot.ly", "showLink": false}); 
+}
+</script><script type="text/javascript">window.addEventListener("resize", function(){if (document.getElementById("{{plotid}}")) {Plotly.Plots.resize(document.getElementById("{{plotid}}"));};})</script></div>
+			</div>
+			<div class="tabContent">
+				{{p.2|safe}}
+			</div>
+			<div class="tabContent">
+				{{compare|safe}}
+			</div>
+			<div class="tabContent">
+				<form name="{% cycle 'expfile-1' 'expfile-2' 'expfile-3' %}" class="expform" action="{% url 'testapp:export' %}" method="post">{% csrf_token %}
+					<input type="text" name="expname" class="ui-corner-all" required pattern="[a-zA-Z0-9_\-\.]+" title="Please only use letters, numbers and . _ -" value="{% cycle 'tradingstrategy1' 'tradingstrategy2' 'tradingstrategy3' %}" />
+					<input type="text" name="expidx" style="display:none;" value="{% cycle '0' '1' '2' %}" />
+					<input type="submit" class="expbutton" value="Export" />
+				</form>
+				<label id="{% cycle 'expinfo-1' 'expinfo-2' 'expinfo-3' %}"> </label><br>
+				{{p.3|safe}}
+			</div>
+		</div>
+		{% endfor %}
 	</div>
+
 </body>

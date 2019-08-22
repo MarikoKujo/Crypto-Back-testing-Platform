@@ -33,8 +33,13 @@ div#users-contain table td, div#users-contain table th { border: 1px solid #eee;
 /*new tabs below*/
 
 .tabContent {
+<<<<<<< HEAD
     border:none;
     padding-top:2.5ex;
+=======
+    border:1px solid silver;
+    padding:0.5ex;
+>>>>>>> 96a3f2483ef0882f06939b596ca3cd96c84ddbc0
 }
 /*.tabsWrapper {
 	border-top:1px solid silver;

@@ -130,6 +130,9 @@ def execute_backtest(start_dt, end_dt, init_cap,
 		pyfig = go.Figure(data=data, layout=layout)
 		# a string with only the div required to create the data
 		plot_div = plotly.offline.plot(pyfig, include_plotlyjs=False, output_type='div')
+		# replace the size to em representation to avoid resizing error
+		plot_div = plot_div.replace('style="height: 100%; width: 100%;"', 
+						'style="height: 40em; width: 75em;"', 1)
 		return plot_div
 
 	def get_daily_details(perf):

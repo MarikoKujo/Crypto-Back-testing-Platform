@@ -23,7 +23,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = '(h!+n#455*u^64o_ff-9qg#17tcbym*e_9!22!&eq%csdisr#_'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['backtester-dot-cryptos-211011.appspot.com','localhost',
                     'backtester.cryptos-211011.appspot.com']
@@ -119,9 +119,9 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.11/howto/static-files/
 
-# STATIC_URL = 'https://storage.googleapis.com/idp_backtest_staticfiles/backtester_static/'
-# STATIC_ROOT = '/backtester_static/'
-STATIC_URL = '/static/'  # Use this only in local testing environment
+STATIC_URL = 'https://storage.googleapis.com/idp_backtest_staticfiles/backtester_static/'
+STATIC_ROOT = '/backtester_static/'
+# STATIC_URL = '/static/'  # Use this only in local testing environment
 
 
 # In order to add file upload functionality

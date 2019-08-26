@@ -1,15 +1,7 @@
 // Make buttons in jQuery button style
 $( function() {
   $( "button[type=button]" ).button();
-  // $( "input[type=submit]" ).button();
-});
-
-// set tabs
-$(document).ready( function() {
-  $( "#tabs" ).tabs();
-  $( ".vrtTabs" ).tabs();
-  $( ".vrtTabs" ).tabs().addClass( "ui-tabs-vertical ui-helper-clearfix" );
-  $( ".vrtTabs li" ).removeClass( "ui-corner-top" ).addClass( "ui-corner-left" );
+  $( "input[type=submit]" ).button();
 });
 
 // start new backtests

@@ -156,7 +156,8 @@ LOGGING = {
     },
     'handlers': {
         'file': {
-            'level': 'INFO',
+            # 'level': 'INFO',  # more detailed log info, especially for ingestion
+            'level': 'WARNING',  # regular log info, only warnings and errors are logged
             'class': 'logging.FileHandler',
             'filename': os.path.join(BASE_DIR, 'debug.log'),
             'formatter':'verbose',
